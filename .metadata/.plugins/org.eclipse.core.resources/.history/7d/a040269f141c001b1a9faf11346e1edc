@@ -1,0 +1,92 @@
+'''
+Created on 31 Oct 2020
+
+@author: thomasgumbricht
+'''
+
+from osgeo import ogr, osr
+import os
+import sys
+
+class DS():
+    '''
+    classdocs
+    '''
+    
+    def __init__(self):
+        '''
+        Constructor
+        '''
+        driverName = "ESRI Shapefile" # e.g.: GeoJSON, ESRI Shapefile
+        self.driver = ogr.GetDriverByName(driverName)
+            
+    def DelDs(self,fpn):
+        ''' Delete data source file
+        '''
+
+        if os.path.exists(self.fpn):
+            self.driver.DeleteDataSource(self.fpn) 
+            
+    def OpenDs(self, fpn): 
+        ''' Open existing data source
+        '''
+        
+        ds = self.driver.Open(fpn, 1) 
+            
+        if ds is None:
+            exitstr =  ('Could not open %s' % (fpn))
+            sys.exit(exitstr)
+    
+        self.layer = ds.GetLayer()
+        
+        self.spatialRef = self.layer.GetSpatialRef()
+        
+    def CopyDs(self, fpn):
+        ''' Copy an existing data source
+        '''   
+                
+        self.OpenDs(fpn)
+                          
+        # Copy all features to finalOutletL
+        
+        finalOutletL = [(feature.GetGeometryRef().GetX(), feature.GetGeometryRef().GetY(), feature.GetField("upstream"), 
+                         feature.GetField("xcoord"), feature.GetField("ycoord"), feature.GetField("basin")) for feature in self.layer]
+    
+        return finalOutletL
+      
+    def WriteDs(self, fpn, spatialRef, featureL, mouth=False):
+        ''' Write data source to file
+        '''
+        
+        dstds = self.driver.CreateDataSource(fpn)
+        
+        # Create the destination dataset layer
+        dstlayer = dstds.CreateLayer('outlet', spatialRef, geom_type=ogr.wkbPoint)
+        
+        dstlayer.CreateField(ogr.FieldDefn('id', ogr.OFTInteger))
+        dstlayer.CreateField(ogr.FieldDefn('upstream', ogr.OFTReal))
+        dstlayer.CreateField(ogr.FieldDefn('xcoord', ogr.OFTReal))
+        dstlayer.CreateField(ogr.FieldDefn('ycoord', ogr.OFTReal))
+        if mouth:
+            dstlayer.CreateField(ogr.FieldDefn('basinid', ogr.OFTInteger))
+            dstlayer.CreateField(ogr.FieldDefn('mouthid', ogr.OFTInteger))
+        
+        defn = dstlayer.GetLayerDefn()
+        
+        for i,f in enumerate(featureL):
+            # Create a new feature (attribute and geometry)
+            feat = ogr.Feature(defn)
+            feat.SetField('id', i)
+            feat.SetField('upstream',f[2])
+            feat.SetField('xcoord',f[3])
+            feat.SetField('ycoord',f[4])
+            if mouth:
+                feat.SetField('basinid',f[5])
+                feat.SetField('mouthid',f[6])
+            
+            point = ogr.Geometry(ogr.wkbPoint)
+            point.AddPoint(f[0], f[1])
+            
+            feat.SetGeometry(point)
+            dstlayer.CreateFeature(feat)
+            feat = None  # destroy feat

@@ -1,0 +1,265 @@
+'''
+Created on 31 Oct 2020
+
+@author: thomasgumbricht
+'''
+
+from pprint import pprint
+import params.be_xml as be_xml
+import os
+import sys
+
+ 
+class Params:
+    '''
+    classdocs
+    '''
+    def __init__(self, xmlFPN, verbose):
+        
+        # Read params from XML
+        d = be_xml.ReadXML(xmlFPN)
+        
+        # Loop over the dict with params
+        for root in d:
+            
+            self.system = d[root]['userproj']['@system']
+            
+            self.region = d[root]['userproj']['@tractid']
+     
+            delete = d[root]['process']['delete']
+            
+            if delete[0] in ['T','t','Y','y']:
+                self.delete = True
+            else:
+                self.delete = False
+            
+            overwrite = d[root]['process']['overwrite']
+            
+            if overwrite[0] in ['T','t','Y','y']:
+                self.overwrite = True
+            else:
+                self.overwrite = False
+    
+            self.paramsD = d[root]['process']['parameters']
+            
+            self.stage = int(d[root]['process']['parameters']["@stage"])
+                
+            self.srcpath = '/Volumes/%s' %(d[root]['process']['srcpath']['@volume'])
+            
+            self.dstpath = '/Volumes/%s' %(d[root]['process']['dstpath']['@volume'])
+    
+            self.srcCompD = d[root]['process']['srccomp']
+            
+            self.dstCompD = d[root]['process']['dstcomp']
+            
+            if verbose:
+                infostr = '    Reading xml file: %s' %(xmlFPN)
+                print (infostr)
+                print ('        system:',self.system)
+                print ('        region:',self.region)
+                print ('        delete flag:', self.delete)
+                print ('        overwrite flag:',self.overwrite)
+                print ('        paramsD:',self.paramsD)
+                print ('        srcpath:',self.srcpath)
+                print ('        dstpath:',self.dstpath)
+                print ('        srcCompD:',self.srcCompD)
+                print ('        dstCompD:',self.dstCompD)
+            
+        if verbose > 1:
+        
+            pprint(d)
+        
+        self.SetSourceFPN()
+        
+        # Arrange processing setup dependent on stage
+        
+        if self.stage == 0: #Stage = is the preparation of the initial GRASS processing, only generates a bare-bone script file
+            # Not yet implemented
+            pass
+        
+        elif self.stage == 1: # Stage 1 is the distillation of outlet points and the scripting of the extraction of basins
+            # Not yet implemented
+            pass
+        
+        # Set the source dataset(s) to use
+        self.SourceDS()
+        
+        reply = self.SetSourceFPN()
+                
+        if stage == 1:        
+            if paramsD['@outlet'].upper() == 'SFD' and not SFDsrcfpn:
+                exitstr = 'to run an SFD outlet analysis you must include an SFD point vector file'
+                sys.exit(exitstr)
+                
+            if paramsD['@outlet'].upper() == 'MFD' and not MFDsrcfpn:
+                exitstr = 'to run an MFD outlet analysis you must include an MFD point vector file'
+                sys.exit(exitstr)
+                
+            if paramsD['@distill'].upper() == 'SFD' and not SFDsrcfpn:
+                exitstr = 'to run an SFD outlet analysis you must include an SFD point vector file'
+                sys.exit(exitstr)
+                
+            if paramsD['@distill'].upper() == 'MFD' and not MFDsrcfpn:
+                exitstr = 'to run an MFD outlet analysis you must include an MFD point vector file'
+                sys.exit(exitstr)
+        
+        # Set the dst files, and check if it exists
+        
+        # In case there are no attributes in the tag <basin-outlet> a dummy attribute must be added
+        if dstCompD['basin-outlet'] == '':
+            dstCompD['basin-outlet'] = {'dummy':0}
+         
+        if '@source' in dstCompD['basin-outlet'].keys():   
+            src = dstCompD['basin-outlet']['@source']
+    
+        if '@product' in dstCompD['basin-outlet'].keys():
+            product = dstCompD['basin-outlet']['@product'] 
+            
+        if '@folder' in dstCompD['basin-outlet'].keys():
+            folder = dstCompD['basin-outlet']['@folder']
+    
+        # Note that for all intermediate files, the path is GRASSProject, i.e. the 'srcpath'
+        dstfp = os.path.join(srcpath, 'GRASSproject', src, 'region', folder, region, '0')
+        
+    
+        if '@prefix' in dstCompD['basin-outlet'].keys():
+            prefix = dstCompD['basin-outlet']['@prefix']
+    
+        else:
+            #Force prefix
+            prefix = 'basin-%s-outlet' %(paramsD['@outlet'].lower()) 
+            if paramsD['@outlet'].lower() == 'sfd' and paramsD['@distill'].lower() == 'mfd':
+                prefix = 'basin-sfdxmfd-outlet' 
+            if paramsD['@outlet'].lower() == 'mfd' and paramsD['@distill'].lower() == 'mfd':
+                prefix = 'basin-mfdxmfd-outlet'
+                
+        pfL = prefix.split('-') 
+        pfpoly = pfL[0]
+        for p in range(1,len(pfL)-1):
+            pfpoly = '%s_%s' %(pfpoly, pfL[p])
+        basinRoot = pfpoly
+        pfpoly = '%s_%s' %(pfpoly, 'area')
+    
+        if '@suffix' in dstCompD['basin-outlet'].keys():
+            suffix = dstCompD['basin-outlet']['@suffix'] 
+        
+        dstfn = '%(pf)s_%(prod)s_%(reg)s_0_%(sf)s.shp' %{'pf':prefix, 'prod':product,
+                    'reg':region, 'sf':suffix}
+        dstfpn = os.path.join(dstfp,dstfn)
+        
+    
+        dstPolygonfn = '%(pf)s-area_%(prod)s_%(reg)s_0_%(sf)s.shp' %{'pf':prefix, 'prod':product,
+                    'reg':region, 'sf':suffix} 
+        dstPolygonfpn = os.path.join(dstfp,dstPolygonfn)
+        
+        if overwrite and os.path.exists(dstPolygonfpn):
+            DelDs(dstPolygonfpn)
+    
+        dsttxtfn = '%(pf)s-pt_%(prod)s_%(reg)s_0_%(sf)s.txt' %{'pf':prefix, 'prod':product,
+                    'reg':region, 'sf':suffix}
+        dsttxtfpn = os.path.join(dstfp,dsttxtfn)
+        
+        dstremfpn = False
+        if paramsD['@outlet'].lower() == 'sfd' and paramsD['@distill'].lower() == 'mfd':     
+            dstremfn = 'rem-%s' %(dstfn)
+            dstremfpn = os.path.join(dstfp,dstremfn)
+            
+        if paramsD['@outlet'].lower() == 'mfd' and paramsD['@distill'].lower() == 'mfd':
+            dstremfn = 'rem-%s' %(dstfn)
+            dstremfpn = os.path.join(dstfp,dstremfn)
+    
+    
+        if stage == 1 and os.path.exists(dstfpn):
+            if overwrite or delete:
+                infostr = '    Deleting existing shape file %s' %(dstfpn)
+                print (infostr)
+                DelDs(dstfpn)
+                if delete:
+                    sys.exit()
+            
+            elif not os.path.exists(dstfp):
+                os.makedirs(dstfp)
+    
+        if stage == 1:
+            return (stage, overwrite, paramsD, region, dstfpn, dstremfpn, srcfp, SFDsrcfpn, MFDsrcfpn, dsttxtfn, dstPolygonfpn, basinRoot, dsttxtfpn)
+        
+        if stage == 2: # Stage 2 removes overlapping basins and optionally removes incomplete basins
+            return (stage, overwrite, paramsD, region, dstfpn, dstremfpn, srcfp, SFDsrcfpn, MFDsrcfpn, dsttxtfn, dstPolygonfpn, basinRoot, dsttxtfpn)
+
+    def SourceDS(self):
+        ''' Set and check the paths to source files
+        '''
+        
+        # The first part of the data source name (prefix) is given
+        
+        if 'basin-outlet-pt' in self.srcCompD:
+            
+            self.Combosrcfpn = self.SetSrcDSFPN('basin-outlet-pt')
+            
+                
+        # The file names are predefined and can not be changes
+        if 'basin-SFD-outlet-pt' in self.srcCompD:
+            
+            src = srcCompD['basin-SFD-outlet-pt']['@source']
+            folder = srcCompD['basin-SFD-outlet-pt']['@folder']
+    
+            srcfp = SFDsrcfp = os.path.join(srcpath, 'GRASSproject', src, 'region', folder, region, '0')
+            
+            prefix = srcCompD['basin-SFD-outlet-pt']['@prefix']
+            product = srcCompD['basin-SFD-outlet-pt']['@product']
+            suffix = srcCompD['basin-SFD-outlet-pt']['@suffix'] 
+            SFDsrcfn = '%(pf)s_%(prod)s_%(reg)s_0_%(sf)s.shp' %{'pf':prefix, 'prod':product,
+                        'reg':region, 'sf':suffix}
+            SFDsrcfpn = os.path.join(SFDsrcfp,SFDsrcfn)
+            
+            if stage == 1 and not os.path.exists(SFDsrcfpn):
+                exitstr = 'Source file %s does not exist' %(SFDsrcfpn)
+                sys.exit(exitstr)
+                
+        if 'basin-MFD-outlet-pt' in srcCompD:
+            
+            src = srcCompD['basin-MFD-outlet-pt']['@source']
+            folder = srcCompD['basin-MFD-outlet-pt']['@folder']
+    
+            srcfp = MFDsrcfp = os.path.join(srcpath, 'GRASSproject', src, 'region', folder, region, '0')
+            
+            prefix = srcCompD['basin-MFD-outlet-pt']['@prefix']
+            product = srcCompD['basin-MFD-outlet-pt']['@product']
+            suffix = srcCompD['basin-MFD-outlet-pt']['@suffix'] 
+            
+            MFDsrcfn = '%(pf)s_%(prod)s_%(reg)s_0_%(sf)s.shp' %{'pf':prefix, 'prod':product,
+                        'reg':region, 'sf':suffix}
+            MFDsrcfpn = os.path.join(MFDsrcfp,MFDsrcfn)
+            
+            if stage == 1 and not os.path.exists(MFDsrcfpn):
+                exitstr = 'Source file %s does not exist' %(MFDsrcfpn)
+                sys.exit(exitstr)
+    
+    def SetSrcDSFPN(self, name):
+        ''' Construct full path to source data set
+        '''
+            
+        src = self.srcCompD[name]['@source']
+        
+        folder = self.srcCompD[name]['@folder']
+
+        srcfp = os.path.join(self.srcpath, 'GRASSproject', src, 'region', folder, self.region, '0')
+        
+        prefix = self.srcCompD[name]['@prefix']
+        
+        product = self.srcCompD[name]['@product']
+        
+        suffix = self.srcCompD[name]['@suffix'] 
+        
+        srcfn = '%(pf)s_%(prod)s_%(reg)s_0_%(sf)s.shp' %{'pf':prefix, 'prod':product,
+                    'reg':self.region, 'sf':suffix}
+        
+        srcfpn = os.path.join(srcfp,srcfn)
+        
+        if not os.path.exists(srcfpn):
+            
+            exitstr = 'Source file %s does not exist' %(srcfpn)
+            
+            sys.exit(exitstr)
+        
+        return srcfpn

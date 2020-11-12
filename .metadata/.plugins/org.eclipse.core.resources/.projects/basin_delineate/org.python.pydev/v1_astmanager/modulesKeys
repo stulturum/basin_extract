@@ -1,0 +1,9 @@
+MODULES_MANAGER_V2
+basin_extract.__init__|/Users/thomasgumbricht/eclipse-workspace/2020-03-basin_extract/basin_delineate/basin_extract/__init__.py
+basin_extract.basin_extract|/Users/thomasgumbricht/eclipse-workspace/2020-03-basin_extract/basin_delineate/basin_extract/basin_extract.py
+basin_extract.basin_extract_v02|/Users/thomasgumbricht/eclipse-workspace/2020-03-basin_extract/basin_delineate/basin_extract/basin_extract_v02.py
+ds_manage.__init__|/Users/thomasgumbricht/eclipse-workspace/2020-03-basin_extract/basin_delineate/ds_manage/__init__.py
+ds_manage.datasource|/Users/thomasgumbricht/eclipse-workspace/2020-03-basin_extract/basin_delineate/ds_manage/datasource.py
+params.__init__|/Users/thomasgumbricht/eclipse-workspace/2020-03-basin_extract/basin_delineate/params/__init__.py
+params.be_params|/Users/thomasgumbricht/eclipse-workspace/2020-03-basin_extract/basin_delineate/params/be_params.py
+params.be_xml|/Users/thomasgumbricht/eclipse-workspace/2020-03-basin_extract/basin_delineate/params/be_xml.py
