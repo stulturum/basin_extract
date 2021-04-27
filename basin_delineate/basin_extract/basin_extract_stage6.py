@@ -27,6 +27,7 @@ class CleanBasinPolys(DS):
         
         # Initiate the data source (DS) manager
         DS.__init__(self)
+        
         self.params = params
               
         self.attributeD = {}

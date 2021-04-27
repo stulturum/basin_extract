@@ -135,7 +135,7 @@ class DS():
         
         if spatialRef == None:
             spatialRef = osr.SpatialReference()
-            spatialRef.ImportFromProj4(self.params.proj4CRS)
+            spatialRef.ImportFromProj4(self.params.process.parameters.proj4CRS)
         
         # Create the destination dataset layer
         self.dstlayer = self.dstds.CreateLayer('tiles', spatialRef, geom_type=ogr.wkbPolygon)

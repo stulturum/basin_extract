@@ -29,9 +29,9 @@ class CreateGRASSprocess(DS):
         DS.__init__(self)
         self.params = params
         
-        if self.params.outlet.upper() == 'MOUTH':
-            if self.params.distill.upper() == 'MOUTH':
-                if self.params.verbose:
+        if self.params.process.parameters.outlet.upper() == 'MOUTH':
+            if self.params.process.parameters.distill.upper() == 'MOUTH':
+                if self.params.process.verbose:
                     infostr = '    Identifying outlets from full width mouth data distilled using mouth and basin clusters'
                     print (infostr)
 
@@ -39,15 +39,15 @@ class CreateGRASSprocess(DS):
                 
             else:
                 # copies all input mouth cells to become basin outlet points
-                if self.params.verbose:
+                if self.params.process.verbose:
                     infostr = '    Outlets set equal to full width mouth data'
                     print (infostr)
                 FIX
                 self.CopyDs()
 
-        elif self.params.outlet == 'SFD':
-            if self.params.distill == 'MFD':
-                if self.params.verbose:
+        elif self.params.process.parameters.outlet == 'SFD':
+            if self.params.process.parameters.distill == 'MFD':
+                if self.params.process.verbose:
                     infostr = '    Identifying outlets from SFD data distilled using MFD clusters'
                     print (infostr)
                     
@@ -55,30 +55,28 @@ class CreateGRASSprocess(DS):
                 
             else:
                 # This is alternative is simply using the existing SFD
-                if self.params.verbose:
+                if self.params.process.verbose:
                     infostr = '    Outlets set equal to SFD input data'
                     print (infostr)
                 #finalOutlets, spatialRef = CopyDs(SFDsrcfpn, paramsD['@proj4CRS'])
                 
         elif self.params.outlet == 'MFD':
             if self.params.distill == 'MFD':
-                if self.params.verbose:
+                if self.params.process.verbose:
                     infostr = '    Identifying outlets by distilling MFD clusters to unique outlets'
                     print (infostr)
                 #finalOutlets, removedOutlets, spatialRef = MFDoutlets(MFDsrcfpn, verbose, paramsD)
             else:
-                if self.params.verbose:
+                if self.params.process.verbose:
                     infostr = '    Outlets set equal to MFD input data'
                     print (infostr)
                 # This is alternative is simply using the existing MFD
                 #finalOutlets, spatialRef = CopyDs(MFDsrcfpn, paramsD['@proj4CRS']) 
         else:
             exitstr = 'EXITING, the parameter outlet must be set to either mouth, MFD or SFD' 
-            print (exitstr)
-            SNULLE
             exit(exitstr)
                 
-        if self.params.verbose:
+        if self.params.process.verbose:
             print ('    Total nr of final outlets', len(self.finalOutletsD))
         
         
@@ -128,36 +126,34 @@ class CreateGRASSprocess(DS):
         self.removedOutlets = 0
         
         # Open the dataset with outlet points
-        if not os.path.exists(self.params.allOutletsfpn_s2):
-            exitstr = 'EXTING, the outlet points file from stage 2 is missing\n    %s' %(self.params.allOutletsfpn_s2)
+        if not os.path.exists(self.params.FPNs.allOutletsfpn_s2):
+            exitstr = 'EXTING, the outlet points file from stage 2 is missing\n    %s' %(self.params.FPNs.allOutletsfpn_s2)
             exit(exitstr)
-            print ( self.params.allOutletsfpn_s2 )
+            print ( self.params.FPNs.allOutletsfpn_s2 )
            
-        ds = self.OpenDs(self.params.allOutletsfpn_s2)
+        ds = self.OpenDs(self.params.FPNs.allOutletsfpn_s2)
         
         srcLayer = ds.GetLayer()
         
         # Open the shore wall points
         
-        swds = self.OpenDs(self.params.shorewallptfpn_s2)
+        swds = self.OpenDs(self.params.process.parameters.shorewallptfpn_s2)
         
         swLayer = swds.GetLayer()
         
         self.GetSpatialRef(srcLayer)
         
         self.featureCount = srcLayer.GetFeatureCount()
-        if self.params.verbose:
+        if self.params.process.verbose:
             print (     "Number of candidate outlets: %d" % (self.featureCount))
 
         self.UniqueDbPt(srcLayer, swLayer)
         
-        
-
     def SFDMFDoutlets(self, SFDsrcfpn, MFDsrcfpn):
         ''' Distill SFD outlets from MFD clusters
         '''
         
-        if self.params.verbose: 
+        if self.params.process.verbose: 
             infostr = '    Cleaning candidate SFD outlets from clustered MFD outlets'
             print (infostr)
            
@@ -165,7 +161,7 @@ class CreateGRASSprocess(DS):
         SFDsrclayer = self.OpenDs(SFDsrcfpn)
         
         # Open the MFD DS and get the point layer
-        MFDsrclayer = self.OpenDs(MFDsrcfpn)
+        #MFDsrclayer = self.OpenDs(MFDsrcfpn)
         
         # Get all outlet points that are clustered in the MFD layer
         clusteredD = self.ClusteredOutlets()
@@ -174,7 +170,7 @@ class CreateGRASSprocess(DS):
         self.featsL = [(feature.GetGeometryRef().GetX(), feature.GetGeometryRef().GetY(), feature.GetField("upstream"),
                    feature.GetField("xcoord"), feature.GetField("ycoord"), feature.GetField("basin")) for feature in SFDsrclayer]
         
-        if self.params.verbose: 
+        if self.params.process.verbose: 
             infostr = '    Initial number of SFD outlets: %s' %(len(self.featsL))
             print (infostr)
     
@@ -198,7 +194,7 @@ class CreateGRASSprocess(DS):
             
         self.removeL = [self.featsL.pop(x) for x in SFDremoveL]
     
-        if self.params.verbose:
+        if self.params.process.verbose:
             infostr = '    Removing %s SFD outlets identified as clustered from MFD outlets' %(len(SFDremoveL))
             print (infostr)
                                                
@@ -244,7 +240,7 @@ class CreateGRASSprocess(DS):
                 mouthD[f['mouth_id']] = []
             mouthD[f['mouth_id']].append(f)
         
-        if self.params.verbose:
+        if self.params.process.verbose:
                 
             print ('        identified nr of mouths', len(mouthD))
 
@@ -281,7 +277,7 @@ class CreateGRASSprocess(DS):
                             outletD[m] = p
 
 
-        if self.params.verbose:
+        if self.params.process.verbose:
             print ('        Identified %s outlet points' %(len(outletD)))
             print ('        Widest mouth = %s pixels' %(self.widestMouth))
             
@@ -327,12 +323,12 @@ class CreateGRASSprocess(DS):
         # Get the total number of candidate basin outlets
         totalAdjCells = adjA.shape[0]
         
-        if self.params.verbose:
+        if self.params.process.verbose:
             print ('    Total number of cells to cluster', totalAdjCells)
             
         # Loop all candidate nodes
         for i,node in enumerate(adjA):
-            if self.params.verbose > 1:
+            if self.params.process.verbose > 1:
                 print ('    Processing cell nr', i)
                 
             # Get all nodes, except the node itself
@@ -382,7 +378,7 @@ class CreateGRASSprocess(DS):
         # Calculate the number of clusters and the total number of nodes in those clusters
         if not self.CalcClusterContent(totalAdjCells):
        
-            if self.params.verbose:
+            if self.params.process.verbose:
                 print ('    Some nodes are registered as duplicates, cleaning clusters')
             
             # If there are duplicates within the clusters, these clusters need to be joined
@@ -420,7 +416,7 @@ class CreateGRASSprocess(DS):
                                 if not keyTwo in keyLinkD[key]:
                                     keyLinkD[key].append(keyTwo)
                                 
-            if self.params.verbose:
+            if self.params.process.verbose:
                 printstr = '    Identified %(d)d duplicate nodes, transferring and deleting' %{'d':duplFound}
                 print (printstr)
             
@@ -509,11 +505,11 @@ class CreateGRASSprocess(DS):
             
         if clusterOutlet.lower()[0] == 'c':
             clusterOutletD = self.CentralClusterOutlet()
-            if self.params.verbose:
+            if self.params.process.verbose:
                 print ('    Looking for central outlet in clusters')
         else:
             clusterOutletD = self.LargestClusterOutlet(featsL)
-            if self.params.verbose:
+            if self.params.process.verbose:
                 print ('    Looking for maximum outlet in clusters')
             
         # Join the clusterMouths to the uniqueL

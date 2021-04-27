@@ -30,9 +30,9 @@ class ProcStage1StreamTopology(DS):
         self.params = params 
 
         # Set the path to the new basins and data to same as the source path
-        self.basinfp = self.datafp = self.params.fp
+        self.basinfp = self.datafp = self.params.FPNs.fp
     
-        if self.params.verbose:
+        if self.params.process.verbose:
             inforstr = '        Stage 1: Scripting up GRASS to find basin outlets'
             print (inforstr)
             
@@ -55,7 +55,7 @@ class ProcStage1StreamTopology(DS):
     def _Grassscript(self):    
         '''
         '''
-        GRASSshFN = '%(s)s_grass_find_basin_outlets_stage1.sh' %{'s':self.params.region}
+        GRASSshFN = '%(s)s_grass_find_basin_outlets_stage1.sh' %{'s':self.params.locus}
 
         self.GRASSshFPN = os.path.join(self.stage1scriptfp, GRASSshFN)
         
@@ -73,11 +73,17 @@ class ProcStage1StreamTopology(DS):
         cmd += 'mkdir -p %s\n\n' % (self.stage1scriptfp)
         
         cmd += '# Set region from the original DEM, if the layer is not at DEM@PERMANENT you have to manually update the layer reference.\n'
+        
         cmd += 'g.region raster=%(dem)s\n\n' %{'dem': 'DEM@PERMANENT'}
         
-        if self.params.grassDEM.lower() == 'hydro_fill_dem':
+        cmd += '# Mapcalc the DEM into  blocking layer only containing 0s.\n'
+    
+        cmd += 'r.mapcalc "blocking = 0" --overwrite\n\n'
+        
+        '''
+        if self.params.process.parameters.grassDEM.lower() == 'hydro_fill_dem':
             
-            if not os.path.exists(self.params.hydroFillDEMFPN_s0):
+            if not os.path.exists(self.params.FPNs.hydroFillDEMFPN_s0):
                 
                 exitstr = 'EXITING - hydro_fill_dem output from stage 0 missing:\n    %(src)s' %{'src':self.params.hydroFillDEMFPN_s0}
             
@@ -86,68 +92,96 @@ class ProcStage1StreamTopology(DS):
             cmd += '# Import hydrologically corrected DEM from stage 0\n'
             
             cmd += 'r.in.gdal input=%(src)s output=%(dst)s\n\n' %{'src':self.params.hydroFillDEMFPN_s0, 'dst':'hydro_fill_dem'}                        
-               
+        '''  
+             
         cmd += '# Multiple flow directions (MFD) watershed analysis\n'
                 
-        cmd += 'r.watershed -a elevation=%(dem)s accumulation=wshed_upstream drainage=wshed_flowdir stream=wshed_stream threshold=%(th)d --overwrite\n\n' %{'dem':self.params.grassDEM , 'th':self.params.basinCellThreshold}
+        cmd += 'r.watershed -a elevation=%(dem)s max_slope_length=%(max_slope_length)s blocking=blocking accumulation=MFD_upstream drainage=MFD_flowdir stream=MFD_stream\
+            tci=MFD_tci spi=MFD_spi basin=MFD_basin half_basin=MFD_half_basin length_slope=MFD_slope_length\
+            slope_steepness=MFD_slope_steepness\
+            threshold=%(th)d  memory=%(mem)d\
+            --overwrite\n\n' %{'dem': self.params.process.parameters.grassDEM,
+                             'max_slope_length':self.params.process.parameters.max_slope_length,
+                             'th': self.params.process.parameters.basinCellThreshold,
+                             'mem':self.params.process.parameters.MBmemory}
 
         cmd += '# MFD with color ramps by removing the "#" sign.\n\n'
                 
         cmd += '# Convert MFD to 10 * natural log to get a Byte range\n'
         
-        cmd += '# r.mapcalc "wshed_ln_upstream = 10*log(wshed_upstream)" --overwrite\n\n'
+        cmd += '# r.mapcalc "MFD_ln_upstream = 10*log(MFD_upstream)" --overwrite\n\n'
         
         cmd += '# Set color ramp\n'
         
-        cmd += '# r.colors map=wshed_ln_upstream color=ryb\n\n'
+        cmd += '# r.colors map=MFD_ln_upstream color=ryb\n\n'
         
         cmd += '# Export as geotiff \n'
         
-        cmd += '# r.out.gdal -f input=wshed_ln_upstream format=GTiff type=Byte output=%(fpn)s --overwrite\n\n' %{'fpn':self.params.upstreamLnMFDfpn_s1}
+        cmd += '# r.out.gdal -f input=MFD_ln_upstream format=GTiff type=Byte output=%(fpn)s --overwrite\n\n' %{'fpn':self.params.FPNs.upstreamLnMFDfpn_s1}
         
 
         cmd += '# Run stream extract \n'
         
-        cmd += 'r.stream.extract elevation=%(dem)s accumulation=wshed_upstream threshold=%(streamThreshold)d mexp=%(mexp)f stream_length=%(streamLength)s\
-                 stream_rast=extract_stream stream_vector=streamvect direction=extract_flowdir memory=%(mem)d --overwrite\n\n' %{'dem':self.params.grassDEM,
-                    'streamThreshold':self.params.streamThreshold, 'mexp':self.params.mexp, 'streamLength':self.params.streamLength, 
-                    'mem':self.params.mem}
+        cmd += 'r.stream.extract elevation=%(dem)s accumulation=MFD_upstream threshold=%(streamThreshold)d mexp=%(mexp)f stream_length=%(streamLength)s\
+                 stream_rast=extract_stream stream_vector=streamvect direction=extract_flowdir memory=%(mem)d --overwrite\n\n' %{'dem':self.params.process.parameters.grassDEM,
+                    'streamThreshold': self.params.process.parameters.streamThreshold, 'mexp': self.params.process.parameters.mexp, 
+                    'streamLength':self.params.process.parameters.streamLength,'mem': self.params.process.parameters.MBmemory}
                  
         cmd += '# Export the stream vector as GeoJSON \n'
         
-        cmd += 'v.out.ogr input=streamvect type=auto format=GeoJSON output=%(fpn)s --overwrite\n\n' %{'fpn':self.params.streamvectFPN_s1}
+        cmd += 'v.out.ogr input=streamvect type=auto format=GeoJSON output=%(fpn)s --overwrite\n\n' %{'fpn':self.params.FPNs.streamvectFPN_s1}
 
         cmd += '# Run stream order from r.watereshed streams = rivers\n'
         
-        cmd += 'r.stream.order stream_rast=wshed_stream direction=wshed_flowdir elevation=%(dem)s accumulation=wshed_upstream\
-                 strahler=riverorder_strahler stream_vect=riverorder_vector memory=%(mem)d --overwrite\n\n' %{'dem':self.params.grassDEM, 
-                    'mem':self.params.mem}
+        cmd += 'r.stream.order stream_rast=MFD_stream direction=MFD_flowdir elevation=%(dem)s accumulation=MFD_upstream\
+                 strahler=riverorder_strahler stream_vect=riverorder_vector memory=%(mem)d --overwrite\n\n' %{'dem': self.params.process.parameters.grassDEM, 
+                    'mem': self.params.process.parameters.MBmemory}
          
         cmd += '# Export riverorder_vector\n'
         
-        cmd += 'v.out.ogr input=riverorder_vector type=auto format=GeoJSON output=%(fpn)s --overwrite\n\n' %{'fpn':self.params.wshed_riverorder_vector_s1}
+        cmd += 'v.out.ogr input=riverorder_vector type=auto format=GeoJSON output=%(fpn)s --overwrite\n\n' %{'fpn':self.params.FPNs.riverorder_vector_s1}
 
         cmd += '# Run stream order from r.stream.extract streams = streams\n'
                         
-        cmd += 'r.stream.order stream_rast=extract_stream direction=extract_flowdir elevation=%(dem)s accumulation=wshed_upstream\
-                 strahler=streamorder_strahler stream_vect=streamorder_vector memory=%(mem)d --overwrite\n\n' %{'dem':self.params.grassDEM, 
-                    'mem':self.params.mem}
+        cmd += 'r.stream.order stream_rast=extract_stream direction=extract_flowdir elevation=%(dem)s accumulation=MFD_upstream\
+                 strahler=streamorder_strahler stream_vect=streamorder_vector memory=%(mem)d --overwrite\n\n' %{'dem':self.params.process.parameters.grassDEM, 
+                    'mem':self.params.process.parameters.MBmemory}
                  
         cmd += '# Export extract_streamorder_vector\n'
         
-        cmd += 'v.out.ogr input=streamorder_vector type=auto format=GeoJSON output=%(fpn)s --overwrite\n\n' %{'fpn':self.params.extract_streamorder_vector_s1}
+        cmd += 'v.out.ogr input=streamorder_vector type=auto format=GeoJSON output=%(fpn)s --overwrite\n\n' %{'fpn':self.params.FPNs.extract_streamorder_vector_s1}
                   
         cmd += '# r.stream.distance for getting proximity and hydraulic head related to river and stream channels\n'        
 
         cmd += 'r.stream.distance stream_rast=extract_stream direction=extract_flowdir elevation=%(dem)s method=downstream\
-                 distance=stream_proximity difference=hydraulhead --overwrite  memory=%(mem)d\n\n' %{'dem':self.params.grassDEM,
-                 'mem':self.params.mem}    
+                 distance=stream_proximity difference=hydraulhead --overwrite  memory=%(mem)d\n\n' %{'dem':self.params.process.parameters.grassDEM,
+                 'mem':self.params.process.parameters.MBmemory}    
 
         cmd += '# Export proximity and hydraulic head related to river and stream channels\n'        
 
-        cmd += 'r.out.gdal -f input=stream_proximity format=GTiff output=%(fpn)s --overwrite\n\n' %{'fpn':self.params.stream_proximity_s1}
+        cmd += 'r.out.gdal -f input=stream_proximity format=GTiff output=%(fpn)s --overwrite\n\n' %{'fpn':self.params.FPNs.stream_proximity_s1}
 
-        cmd += 'r.out.gdal -f input=hydraulhead format=GTiff output=%(fpn)s --overwrite\n\n' %{'fpn':self.params.hydraulhead_s1}
+        cmd += 'r.out.gdal -f input=hydraulhead format=GTiff output=%(fpn)s --overwrite\n\n' %{'fpn':self.params.FPNs.hydraulhead_s1}
+          
+        cmd += '# Export tci and spi parameters\n'        
+
+        cmd += 'r.out.gdal -f input=MFD_tci format=GTiff output=%(fpn)s --overwrite\n\n' %{'fpn':self.params.FPNs.tci_s1}
+
+        cmd += 'r.out.gdal -f input=MFD_spi format=GTiff output=%(fpn)s --overwrite\n\n' %{'fpn':self.params.FPNs.spi_s1}
+        
+        cmd += '# Export basin and half basin\n'        
+
+        cmd += 'r.out.gdal -f input=MFD_basin format=GTiff output=%(fpn)s --overwrite\n\n' %{'fpn':self.params.FPNs.basin_s1}
+
+        cmd += 'r.out.gdal -f input=MFD_half_basin format=GTiff output=%(fpn)s --overwrite\n\n' %{'fpn':self.params.FPNs.half_basin_s1}
+
+            
+        cmd += '# Export RUSLE parameters\n'        
+
+        cmd += 'r.out.gdal -f input=MFD_slope_length format=GTiff output=%(fpn)s --overwrite\n\n' %{'fpn':self.params.FPNs.rusle_slope_length_s1}
+
+        cmd += 'r.out.gdal -f input=MFD_slope_steepness format=GTiff output=%(fpn)s --overwrite\n\n' %{'fpn':self.params.FPNs.rusle_slope_steepness_s1}
+
 
         GRASSshF = open(self.GRASSshFPN,'w')
         

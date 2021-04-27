@@ -37,9 +37,9 @@ class ProcStage2BasinOutlets(DS):
         self.params = params 
 
         # Set the path to the new basins and data to same as the source path
-        self.basinfp = self.datafp = self.params.fp
+        self.basinfp = self.datafp = self.params.FPNs.fp
     
-        if self.params.verbose:
+        if self.params.process.verbose:
             inforstr = '        Stage 2: Scripting up GRASS to find basin outlets'
             print (inforstr)
             
@@ -50,22 +50,22 @@ class ProcStage2BasinOutlets(DS):
     
         self._Grassscript()
         
-        cmd = '\n# To run the output script you must have GRASS GIS open in a Terminal window session.\n'
+        cmd = '\n# To run the script you must have GRASS GIS open in a Terminal window session.\n'
         cmd += '# Change the script to be executable by the command:\n'
         cmd += 'chmod 755 %(fpn)s\n' %{'fpn': self.GRASSshFPN}
         cmd += '# Then execute the command from your GRASS terminal session:\n'
         cmd += '%(fpn)s\n\n'%{'fpn': self.GRASSshFPN}
         cmd += 'The main output from the script is two shape files:\n'
         cmd += '    all-outlets-pt_drainage_XX (initial outlet candidate points),\n'
-        cmd += '    shorewall-pt_drainage_XX (all potential outlet points),\n'
-        cmd += 'You should inspect these files as step 3 before continuing with step 4.'
+        cmd += '    shorewall-pt_drainage_XX (all potential outlet points),\n\n'
+        cmd += '    You should inspect these files as step 3 before continuing with step 4.'
         
         print (cmd)
                          
     def _Grassscript(self):    
         '''
         '''
-        GRASSshFN = '%(s)s_grass_find_basin_outlets_stage2.sh' %{'s':self.params.region}
+        GRASSshFN = '%(s)s_grass_find_basin_outlets_stage2.sh' %{'s':self.params.locus}
 
         self.GRASSshFPN = os.path.join(self.stage2scriptfp, GRASSshFN)
         
@@ -85,27 +85,16 @@ class ProcStage2BasinOutlets(DS):
         cmd += '# Set region from the original DEM, if the layer is not at DEM@PERMANENT you have to manually update the layer reference.\n'
         cmd += 'g.region raster=%(dem)s\n\n' %{'dem': 'DEM@PERMANENT'}
                 
-        if self.params.grassDEM == 'hydro_fill_dem':
-            
-            if not os.path.exists(self.params.hydroFillDEMFPN_s0):
-                
-                exitstr = 'EXITING - hydro_fill_dem output from stage 0 missing:\n    %(src)s' %{'src':self.params.hydroFillDEMFPN_s0}
-            
-                exit (exitstr)
-                
-            cmd += '# Import hydrologically corrected DEM from stage 0\n'
-            
-            cmd += 'r.in.gdal input=%(src)s output=%(dst)s\n\n' %{'src':self.params.hydroFillDEMFPN_s0, 'dst':'hydro_fill_dem'}
-                        
+                                
         cmd += '# Single flow direction (SFD) watershed analysis\n'
         
-        cmd += 'r.watershed -as elevation=%(dem)s accumulation=SFD_upstream drainage=SFD_drainage threshold=%(th)d --overwrite\n\n' %{'dem':self.params.grassDEM , 'th':self.params.basinCellThreshold}
+        cmd += 'r.watershed -as elevation=%(dem)s accumulation=SFD_upstream drainage=SFD_drainage threshold=%(th)d --overwrite\n\n' %{'dem':self.params.process.parameters.grassDEM , 'th':self.params.process.parameters.basinCellThreshold}
         
-        cmd += '# Mulitple flow directions (MFD) watershed analysis\n'
+        #cmd += '# Mulitple flow directions (MFD) watershed analysis\n'
         
-        cmd += 'r.watershed -a elevation=%(dem)s accumulation=MFD_upstream drainage=MFD_drainage threshold=%(th)d --overwrite\n\n' %{'dem':self.params.grassDEM , 'th':self.params.basinCellThreshold}
+        #cmd += 'r.watershed -a elevation=%(dem)s accumulation=MFD_upstream drainage=MFD_drainage threshold=%(th)d --overwrite\n\n' %{'dem':self.params.process.parameters.grassDEM , 'th':self.params.process.parameters.basinCellThreshold}
         
-        cmd += '# Export SFD and MFD with color ramps by removing the "#" sign.\n\n'
+        cmd += '# Export SFD with color ramps by removing the "#" sign.\n\n'
         
         cmd += '# Convert SFD to 10 * natural log to get a Byte range\n'
         
@@ -117,8 +106,9 @@ class ProcStage2BasinOutlets(DS):
         
         cmd += '# Export as geotiff \n'
 
-        cmd += '# r.out.gdal -f input=SFD_ln_upstream format=GTiff type=Byte output=%(fpn)s --overwrite\n\n' %{'fpn':self.params.upstreamLnSFDfpn_s2}
+        cmd += '# r.out.gdal -f input=SFD_ln_upstream format=GTiff type=Byte output=%(fpn)s --overwrite\n\n' %{'fpn':self.params.FPNs.upstreamLnSFDfpn_s2}
         
+        '''
         cmd += '# Convert MFD to 10 * natural log to get a Byte range\n'
         
         cmd += '# r.mapcalc "MFD_ln_upstream = 10*log(MFD_upstream)" --overwrite\n\n'
@@ -130,26 +120,26 @@ class ProcStage2BasinOutlets(DS):
         cmd += '# Export as geotiff \n'
         
         cmd += '# r.out.gdal -f input=MFD_ln_upstream format=GTiff type=Byte output=%(fpn)s --overwrite\n\n' %{'fpn':self.params.upstreamLnMFDfpn_s2}
-        
+        '''
         cmd += '# Identify terminal water body \n' 
         
-        cmd += 'r.mapcalc "drain_terminal = if(isnull(%(dem)s), 1, null())" --overwrite\n\n'  %{'dem':self.params.grassDEM}
+        cmd += 'r.mapcalc "drain_terminal = if(isnull(%(dem)s), 1, null())" --overwrite\n\n'  %{'dem':self.params.process.parameters.grassDEM}
         
         cmd += '# Get the shoreline \n'
         
-        cmd += 'r.buffer input=drain_terminal output=shoreline distances=%(dist)f units=meters --overwrite\n\n' %{'dist':self.params.adjacentDist}
+        cmd += 'r.buffer input=drain_terminal output=shoreline distances=%(dist)f units=meters --overwrite\n\n' %{'dist':self.params.process.parameters.adjacentDist}
         
         cmd += '# Extract accumulated SFD drainage for the shoreline \n'
         
         #cmd += 'r.mapcalc "shoreline_SFD_flowacc = if((shoreline > 1), SFD_upstream, null())" --overwrite\n\n'
         
-        cmd += 'r.mapcalc "basin_SFD_outlets = if((shoreline > 1), if ((SFD_upstream >= %(bct)d),SFD_upstream,null() ) , null())" --overwrite\n\n' %{'bct':self.params.basinCellThreshold}
+        cmd += 'r.mapcalc "basin_SFD_outlets = if((shoreline > 1), if ((SFD_upstream >= %(bct)d),SFD_upstream,null() ) , null())" --overwrite\n\n' %{'bct':self.params.process.parameters.basinCellThreshold}
 
-        cmd += '# Extract accumulated MFD drainage for the shoreline \n'
+        cmd += '# Extract accumulated MFD drainage for the shoreline - Note that MFD_upstream is produced in stage 1\n'
 
         #cmd += 'r.mapcalc "shoreline_MFD_flowacc = if((shoreline > 1), MFD_upstream, null())" --overwrite\n\n'
         
-        cmd += 'r.mapcalc "basin_MFD_outlets = if((shoreline > 1), if ((MFD_upstream >= %(bct)d),MFD_upstream,null() ) , null())" --overwrite\n\n' %{'bct':self.params.basinCellThreshold}
+        cmd += 'r.mapcalc "basin_MFD_outlets = if((shoreline > 1), if ((MFD_upstream >= %(bct)d),MFD_upstream,null() ) , null())" --overwrite\n\n' %{'bct':self.params.process.parameters.basinCellThreshold}
         '''
         cmd += '# Threshold minimum drainage area \n'
         cmd += '# You must have created a reclass text file in advance, for example llke this \n'
@@ -192,7 +182,8 @@ class ProcStage2BasinOutlets(DS):
         cmd += '# The default is to set the motuhs to cells with an elevation <= 0.\n'
         cmd += '# Change the value to include more upstream areas or if your terminal drainage is at another elevation.\n\n'
         
-        cmd += 'r.mapcalc "lowlevel_DEM = if((%(dem)s <= 0), 0, null())"\n\n' %{'dem': self.params.grassDEM}
+        cmd += 'r.mapcalc "lowlevel_DEM = if((%(dem)s <= %(terminalelev)f), %(terminalelev)f, null())"\n\n' %{'dem': self.params.process.parameters.grassDEM,
+                                                                                                    'terminalelev':self.params.process.parameters.terminalelev}
         
         cmd += '# Identify all "lowlevel" cells connected to a basin outlet candidate.\n'
         cmd += '# This cost grow analysis should join mouths belonging to the same basin but separated at the shoreline .\n'
@@ -205,12 +196,12 @@ class ProcStage2BasinOutlets(DS):
 
         cmd += '# Export the basin outlet clumps by removing the "#" sign.\n'
         
-        cmd += '# r.out.gdal -f input=lowlevel_outlet_clumps format=GTiff output=%(fpn)s --overwrite\n\n' %{'fpn': self.params.lowlevelOutletClumpsfpn_s2}
+        cmd += '# r.out.gdal -f input=lowlevel_outlet_clumps format=GTiff output=%(fpn)s --overwrite\n\n' %{'fpn': self.params.FPNs.lowlevelOutletClumpsfpn_s2}
         
         cmd += '# Identify beachfront river mouths\n'
         cmd += '# in order to identify separate mouths even if hydrologically connected inside of the shoreline .\n'
 
-        cmd += 'r.mapcalc "shoreline_DEM = if((shoreline > 1 && %(dem)s <= 0), 0, null())" --overwrite\n\n' %{'dem': self.params.grassDEM}
+        cmd += 'r.mapcalc "shoreline_DEM = if((shoreline > 1 && %(dem)s <= 0), 0, null())" --overwrite\n\n' %{'dem': self.params.process.parameters.grassDEM}
         
         cmd += '# This cost grow analysis joins the cells of separate mouth outlets along the shoreline.\n'
  
@@ -222,7 +213,7 @@ class ProcStage2BasinOutlets(DS):
         
         cmd += '# Export the mouth outlet clumps by removing the "#" sign.\n'
 
-        cmd += '# r.out.gdal -f input=shoreline_outlet_clumps format=GTiff output=%(fpn)s --overwrite\n\n' %{'fpn': self.params.shorelineOutletClumpsfpn_s2}
+        cmd += '# r.out.gdal -f input=shoreline_outlet_clumps format=GTiff output=%(fpn)s --overwrite\n\n' %{'fpn': self.params.FPNs.shorelineOutletClumpsfpn_s2}
         
         ### From this point the separate SFD and MFD data sources are not needed for a combined solutions. The coding is however included for convenience. ###
         
@@ -256,7 +247,7 @@ class ProcStage2BasinOutlets(DS):
         
         cmd += 'v.what.rast map=basin_all_outlets_pt raster=MFD_upstream column=mfdup\n\n'
         
-        cmd += 'v.what.rast map=basin_all_outlets_pt raster=%(dem)s column=elevation\n\n' %{'dem': self.params.grassDEM}
+        cmd += 'v.what.rast map=basin_all_outlets_pt raster=%(dem)s column=elevation\n\n' %{'dem': self.params.process.parameters.grassDEM}
         
         cmd += 'v.what.rast map=basin_all_outlets_pt raster=shoreline_outlet_clumps column=mouth_id\n\n'
         
@@ -268,7 +259,7 @@ class ProcStage2BasinOutlets(DS):
                 
         cmd += '# v.what.rast map=basin_SFD_outlets_pt raster=SFD_upstream column=upstream\n\n'
         
-        cmd += '# v.what.rast map=basin_SFD_outlets_pt raster=%(dem)s column=elevation\n\n' %{'dem': self.params.grassDEM}
+        cmd += '# v.what.rast map=basin_SFD_outlets_pt raster=%(dem)s column=elevation\n\n' %{'dem': self.params.process.parameters.grassDEM}
         
         cmd += '# v.what.rast map=basin_SFD_outlets_pt raster=shoreline_outlet_clumps column=mouth_id\n\n'
         
@@ -276,7 +267,7 @@ class ProcStage2BasinOutlets(DS):
         
         cmd += '# v.what.rast map=basin_MFD_outlets_pt raster=MFD_upstream column=upstream\n\n'
         
-        cmd += '# v.what.rast map=basin_MFD_outlets_pt raster=%(dem)s column=elevation\n\n' %{'dem': self.params.grassDEM}   
+        cmd += '# v.what.rast map=basin_MFD_outlets_pt raster=%(dem)s column=elevation\n\n' %{'dem': self.params.process.parameters.grassDEM}   
         
         cmd += '# v.what.rast map=basin_MFD_outlets_pt raster=shoreline_outlet_clumps column=mouth_id\n\n'
         
@@ -290,20 +281,20 @@ class ProcStage2BasinOutlets(DS):
         
         cmd += '# v.to.db map=basin_MFD_outlets_pt option=coor columns=xcoord,ycoord\n\n'
         
-        cmd += '# Export basin outlet candidates - "all outlets p"t required in ESRI Shape format for stage 2 processing\n'
+        cmd += '# Export basin outlet candidates - "all outlets pt" required in ESRI Shape format for stage 2 processing\n'
         
-        cmd += 'v.out.ogr type=point input=basin_all_outlets_pt format=ESRI_Shapefile output=%(fpn)s --overwrite\n\n' %{'fpn': self.params.allOutletsfpn_s2}
+        cmd += 'v.out.ogr type=point input=basin_all_outlets_pt format=ESRI_Shapefile output=%(fpn)s --overwrite\n\n' %{'fpn': self.params.FPNs.allOutletsfpn_s2}
         
-        cmd += '# v.out.ogr type=point input=basin_SFD_outlets_pt format=ESRI_Shapefile output=%(fpn)s --overwrite\n\n' %{'fpn': self.params.SFDOutletsfpn_s2}
+        cmd += '# v.out.ogr type=point input=basin_SFD_outlets_pt format=ESRI_Shapefile output=%(fpn)s --overwrite\n\n' %{'fpn': self.params.FPNs.SFDOutletsfpn_s2}
         
-        cmd += '# v.out.ogr type=point input=basin_MFD_outlets_pt format=ESRI_Shapefile output=%(fpn)s --overwrite\n\n' %{'fpn': self.params.MFDOutletsfpn_s2}
+        cmd += '# v.out.ogr type=point input=basin_MFD_outlets_pt format=ESRI_Shapefile output=%(fpn)s --overwrite\n\n' %{'fpn': self.params.FPNs.MFDOutletsfpn_s2}
         
         cmd += '# Build a virtual wall across the basin mouths that will be used to force the flow out\n'
         cmd += '# of the basin mouths to pass a single cell and facilitate hydrological balance calculations.\n\n'
         
         cmd += '# Buffer one cell from the identified mouths.\n\n'
 
-        cmd += 'r.buffer input=shoreline_outlet_clumps output=mouth_buffer distances=%(dist)f units=meters --overwrite\n\n' %{'dist':self.params.adjacentDist}
+        cmd += 'r.buffer input=shoreline_outlet_clumps output=mouth_buffer distances=%(dist)f units=meters --overwrite\n\n' %{'dist':self.params.process.parameters.adjacentDist}
         
         cmd += '# Reclass the buffer to get cells only on the "seaside" of the shoreline.\n'
         cmd += '# The wall will be too thick where it is not exactly horisontal or vertical.\n'
@@ -312,7 +303,7 @@ class ProcStage2BasinOutlets(DS):
         
         cmd += '# Export the thickwall by removing the "#" sign.\n'
         
-        cmd += '# r.out.gdal -f format=GTiff type=Byte input=thickwall output=%(fpn)s --overwrite\n\n' %{'fpn': self.params.thickwallfpn_s2} 
+        cmd += '# r.out.gdal -f format=GTiff type=Byte input=thickwall output=%(fpn)s --overwrite\n\n' %{'fpn': self.params.FPNs.thickwallfpn_s2} 
         
         cmd += '# Shrink the thickwall to 1 cell width.\n'
         cmd += '# Remove the thickwall from the terminal drainage.\n'
@@ -321,11 +312,11 @@ class ProcStage2BasinOutlets(DS):
 
         cmd += '# Buffer from the remaining terminal drainage nd in over land, now including thickwall.\n'
         
-        cmd += 'r.buffer input=drain_terminal_remain output=mouthshoreline distances=%(dist)f units=meters --overwrite\n\n' %{'dist':self.params.adjacentDist}
+        cmd += 'r.buffer input=drain_terminal_remain output=mouthshoreline distances=%(dist)f units=meters --overwrite\n\n' %{'dist':self.params.process.parameters.adjacentDist}
         
         cmd += '# Export by removing the "#" sign.\n'
         
-        cmd += '# r.out.gdal -f format=GTiff type=Byte input=mouthshoreline output=output=%(fpn)s --overwrite\n\n' %{'fpn': self.params.mouthshorelinefpn_s2}  
+        cmd += '# r.out.gdal -f format=GTiff type=Byte input=mouthshoreline output=output=%(fpn)s --overwrite\n\n' %{'fpn': self.params.FPNs.mouthshorelinefpn_s2}  
         
         cmd += '# Combine mouthshoreline and shorewall to get the final shorewall, set shorewall elevation to 9999.\n'
         
@@ -333,7 +324,7 @@ class ProcStage2BasinOutlets(DS):
         
         cmd += '# Export the shorewall by removing the "#" sign.\n'
         
-        cmd += '# r.out.gdal -f format=GTiff type=Byte input=shorewall output=%(fpn)s --overwrite\n\n' %{'fpn': self.params.shorewallfpn_s2} 
+        cmd += '# r.out.gdal -f format=GTiff type=Byte input=shorewall output=%(fpn)s --overwrite\n\n' %{'fpn': self.params.FPNs.shorewallfpn_s2} 
         
         cmd += '# Vectorize the shorewall.\n'
         
@@ -341,7 +332,7 @@ class ProcStage2BasinOutlets(DS):
         
         cmd += '# Export the shorewall vector - required in ESRI Shape format for stage 2 processing.\n'
         
-        cmd += 'v.out.ogr type=point input=shorewall_pt format=ESRI_Shapefile output=%(fpn)s --overwrite\n\n' %{'fpn': self.params.shorewallptfpn_s2} 
+        cmd += 'v.out.ogr type=point input=shorewall_pt format=ESRI_Shapefile output=%(fpn)s --overwrite\n\n' %{'fpn': self.params.FPNs.shorewallptfpn_s2} 
              
         cmd += '# Fill up the DEM with the holes created from the difference between thickwall and shorewall\n'
         
@@ -349,7 +340,7 @@ class ProcStage2BasinOutlets(DS):
         
         cmd += '# Export the fillholeDEM by removing the "#" sign.\n'
 
-        cmd += '# r.out.gdal format=GTiff input=fillholeDEM output=%(fpn)s --overwrite\n\n' %{'fpn': self.params.shorefillDEMfpn_s2}        
+        cmd += '# r.out.gdal format=GTiff input=fillholeDEM output=%(fpn)s --overwrite\n\n' %{'fpn': self.params.FPNs.shorefillDEMfpn_s2}        
         
         
 

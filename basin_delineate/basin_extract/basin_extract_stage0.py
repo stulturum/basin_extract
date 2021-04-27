@@ -25,17 +25,17 @@ class ProcStage0(DS):
         self.params = params 
         
         # Set the parameter that determines whether to fill only single cells or areas (-f flag in GRASS package)
-        if not self.params.fillDirCells:
-            self.params.vt = False
-        elif self.params.fillDirCells == 1:
-            self.params.vt = 'pt'
+        if not self.params.process.parameters.fillDirCells:
+            self.params.process.parameters.vt = False
+        elif self.params.process.parametersfillDirCells == 1:
+            self.params.process.parameters.vt = 'pt'
         else:
-            self.params.vt = 'area'
+            self.params.process.parameters.vt = 'area'
          
         # Set the path to the new basins and data to same as the source path
-        self.basinfp = self.datafp = self.params.fp
+        self.basinfp = self.datafp = self.params.FPNs.fp
     
-        if self.params.verbose:
+        if self.params.process.verbose:
             inforstr = '        Stage 0: Patch up DEM'
             print (inforstr)
             
@@ -46,9 +46,11 @@ class ProcStage0(DS):
     
         self._TerminalDrainage()
         
-        self._FillDirTiling()
+        if self.params.process.parameters.vt:
         
-        self._PatchSuperimpose()
+            self._FillDirTiling()
+            
+            self._PatchSuperimpose()
         
         cmd = '# To run the output scripts you must have GRASS GIS open in a Terminal window session.\n\n'
         cmd += '# Script for removing land locked no-data regions.\n'
@@ -59,35 +61,37 @@ class ProcStage0(DS):
         
         print (cmd)
         
-        cmd = '# Script for tiled hydrolgoical DEM correction.\n'
-        cmd += '# Change the script to be executable by the command:\n'
-        cmd += 'chmod 755 %(fpn)s\n' %{'fpn': self.GRASS1shFPN}
-        cmd += '# Then execute the command form your GRASS terminal session:\n'
-        cmd += '%(fpn)s\n\n'%{'fpn': self.GRASS1shFPN}
+        if self.params.process.parameters.vt:
         
-        print (cmd)
+            cmd = '# Script for tiled hydrolgoical DEM correction.\n'
+            cmd += '# Change the script to be executable by the command:\n'
+            cmd += 'chmod 755 %(fpn)s\n' %{'fpn': self.GRASS1shFPN}
+            cmd += '# Then execute the command form your GRASS terminal session:\n'
+            cmd += '%(fpn)s\n\n'%{'fpn': self.GRASS1shFPN}
+            
+            print (cmd)
+            
+            cmd = '# Two alternative scripts for superimposing hydrological corrections.\n\n'
+            cmd += '# Alternativ 1: GRASS processing (slower).\n'
+            cmd += '# Change the script to be executable by the command:\n'
+            cmd += 'chmod 755 %(fpn)s\n' %{'fpn': self.GRASS2shFPN}
+            cmd += '# Then execute the command form your GRASS terminal session:\n'
+            cmd += '%(fpn)s\n\n'%{'fpn': self.GRASS2shFPN}
+            
+            print (cmd)
+            
+            cmd = '# Alternativ 2: GDAL and ogr2ogr processing (faster, requires that GDAL is installed).\n'
+            cmd += '# Change the script to be executable by the command:\n'
+            cmd += 'chmod 755 %(fpn)s\n' %{'fpn': self.OGRshFPN}
+            cmd += '# Then execute the command form your GRASS terminal session:\n'
+            cmd += '%(fpn)s\n\n'%{'fpn': self.OGRshFPN}
         
-        cmd = '# Two alternative scripts for superimposing hydrological corrections.\n\n'
-        cmd += '# Alternativ 1: GRASS processing (slower).\n'
-        cmd += '# Change the script to be executable by the command:\n'
-        cmd += 'chmod 755 %(fpn)s\n' %{'fpn': self.GRASS2shFPN}
-        cmd += '# Then execute the command form your GRASS terminal session:\n'
-        cmd += '%(fpn)s\n\n'%{'fpn': self.GRASS2shFPN}
-        
-        print (cmd)
-        
-        cmd = '# Alternativ 2: GDAL and ogr2ogr processing (faster, requires that GDAL is installed).\n'
-        cmd += '# Change the script to be executable by the command:\n'
-        cmd += 'chmod 755 %(fpn)s\n' %{'fpn': self.OGRshFPN}
-        cmd += '# Then execute the command form your GRASS terminal session:\n'
-        cmd += '%(fpn)s\n\n'%{'fpn': self.OGRshFPN}
-        
-        print (cmd)
+            print (cmd)
     
     def _PatchSuperimpose(self):
         '''
         '''
-        if not self.params.fillDirCells and not self.params.invertedFillDirCells:
+        if not self.params.process.parameters.fillDirCells and not self.params.process.parameters.invertedFillDirCells:
             
             infostr = '    No filling of pits (fillDirCell == 0)'
             
@@ -332,7 +336,7 @@ class ProcStage0(DS):
         '''
           
         # Set the script file names
-        GRASS1shFN = '%(s)s_grass_dem-filldir-%(vt)s_stage0-step1.sh' %{'s':self.params.region, 'vt':self.params.vt}
+        GRASS1shFN = '%(s)s_grass_dem-filldir-%(vt)s_stage0-step1.sh' %{'s':self.params.locus, 'vt':self.params.vt}
         #GDALshFN = '%(s)s_GDAL_patch-tiles-dem-filldir-%(vt)s_stage0-step2.sh' %{'s':self.params.region,'vt':self.params.vt}
         
         self.GRASS1shFPN = GRASS1shFPN = os.path.join(self.stage0scriptfp, GRASS1shFN) 
@@ -358,31 +362,31 @@ class ProcStage0(DS):
         cmd += '# To use another DEM as input manually edit the 1st r.mapcalc before the looping.\n\n'
         
         cmd += '# Copy the DEM to use as baseline for burning the DEM fill vectors\n'
-        cmd += 'cp %(src)s %(dst)s\n\n' %{'src':self.params.inlandCompDEMFPN_s0, 'dst':self.params.hydroFillDEMFPN_s0}
+        cmd += 'cp %(src)s %(dst)s\n\n' %{'src':self.params.FPNs.inlandCompDEMFPN_s0, 'dst':self.params.FPNs.hydroFillDEMFPN_s0}
         
         cmd += '# Set the region to the full map extent\n'
-        cmd += 'g.region raster=%(dem)s\n\n' %{'dem': self.params.grassDEM}
+        cmd += 'g.region raster=%(dem)s\n\n' %{'dem': self.params.process.parameters.grassDEM}
         cmd += '# There is a bug in r.fill.dir and you must reclass all no data to a very low elevation (-1000)\n'
         cmd += 'r.mapcalc "rfilldir_DEM = if(isnull(inland_comp_DEM), -1000, inland_comp_DEM )" --overwrite\n\n'
                         
-        if self.params.invertedFillDirCells:
+        if self.params.process.parameters.invertedFillDirCells:
             cmd += '#r.watershed to get upstream areas for the inverted height suppresion\n'
             cmd += 'r.watershed -a elevation=inland_comp_DEM accumulation=MFD_upstream_filldir threshold=%(th)d --overwrite\n\n' %{'dem':self.params.grassDEM , 'th':self.params.basinCellThreshold}
 
         self.GRASS1shF.write(cmd)
 
-        tilesize = self.params.tileCellSize
-        overlap = self.params.tileCellOverlap
+        tilesize = self.params.process.parameters.tileCellSize
+        overlap = self.params.process.parameters.tileCellOverlap
         
         # featureD is a dict that hold the id and geometry of each polygon
         featureD = {}
         
-        for c in range(0,int(self.params.cols/tilesize)+1):
-            rW = max(self.params.west,self.params.west+c*tilesize*self.params.ewres-overlap*self.params.ewres)
-            rE = min(self.params.east,tilesize*self.params.ewres+self.params.west+c*tilesize*self.params.ewres+overlap*self.params.ewres)
-            for r in range(0,int(self.params.rows/tilesize)+1):
-                rS = max(self.params.south,self.params.south+r*tilesize*self.params.nsres-overlap*self.params.nsres)
-                rN = min(self.params.north,tilesize*self.params.nsres+self.params.south+r*tilesize*self.params.nsres+overlap*self.params.nsres)
+        for c in range(0,int(self.params.gt.cols/tilesize)+1):
+            rW = max(self.params.gt.west,self.params.gt.west+c*tilesize*self.params.gt.ewres-overlap*self.params.gt.ewres)
+            rE = min(self.params.gt.east,tilesize*self.params.gt.ewres+self.params.gt.west+c*tilesize*self.params.gt.ewres+overlap*self.params.gt.ewres)
+            for r in range(0,int(self.params.gt.rows/tilesize)+1):
+                rS = max(self.params.gt.south,self.params.gt.south+r*tilesize*self.params.gt.nsres-overlap*self.params.gt.nsres)
+                rN = min(self.params.gt.north,tilesize*self.params.gt.nsres+self.params.gt.south+r*tilesize*self.params.gt.nsres+overlap*self.params.gt.nsres)
                 
                 # Reset region
                 
@@ -400,9 +404,9 @@ class ProcStage0(DS):
                 
                 featureD[tile_id] = {'id':tile_id, 'xmin':rW, 'xmax':rE, 'ymin':rS, 'ymax':rN}
                 
-                if self.params.fillDirCells:
+                if self.params.process.parameters.fillDirCells:
                 
-                    if self.params.fillDirCells == 1:
+                    if self.params.process.parameters.fillDirCells == 1:
                         
                         self._FillDirPoint(tile_id)
                         
@@ -410,9 +414,9 @@ class ProcStage0(DS):
                         
                         self._FillDirArea(tile_id)
                       
-                if self.params.invertedFillDirCells:
+                if self.params.process.parameters.invertedFillDirCells:
                     
-                    if self.params.invertedFillDirCells >= 1:
+                    if self.params.process.parameters.invertedFillDirCells >= 1:
                     
                         self._InvertedFillDirPoint(tile_id)
                         
@@ -432,14 +436,14 @@ class ProcStage0(DS):
 
         self.GRASS1shF.write('\n')
                 
-        cmd = 'g.region raster=%(dem)s\n\n' %{'dem': self.params.grassDEM}
+        cmd = 'g.region raster=%(dem)s\n\n' %{'dem': self.params.process.parameters.grassDEM}
         
         self.GRASS1shF.write(cmd)
                
         self.GRASS1shF.close()
         
         # Save the tiles used for the filldir 
-        self.WriteStage0DS(self.params.fillDEMtiles_s0, None, featureD)
+        self.WriteStage0DS(self.params.FPNs.fillDEMtiles_s0, None, featureD)
            
     def _FillDirPoint(self, tile_id):
         '''
@@ -630,7 +634,7 @@ class ProcStage0(DS):
         ''' GRASS shell script for terminal drainage "no data" fixing
         '''
         
-        GRASS0shFN = '%(s)s_grass_fix-terminal-drainage-nodata_stage0-step0.sh' %{'s':self.params.region}
+        GRASS0shFN = '%(s)s_grass_fix-terminal-drainage-nodata_stage0-step0.sh' %{'s':self.params.locus}
 
         self.GRASS0shFPN = os.path.join(self.stage0scriptfp, GRASS0shFN)
 
@@ -654,94 +658,81 @@ class ProcStage0(DS):
         GRASSshF.write(cmd)
         
 
-        if not os.path.exists(self.params.inputDEMFPN_s0):
+        if not os.path.exists(self.params.FPNs.inputDEMFPN_s0):
             
             GRASSshF.write('# Mapcalc to convert input DEM to DEM without negative values\n')
             
-            cmd = 'r.mapcalc "inputDEMonlyp = if(%(dem)s<0, 0, %(dem)s)" --overwrite\n\n' %{'dem':self.params.grassDEM}
+            cmd = 'r.mapcalc "inputDEMonlyp = if(%(dem)s<0, 0, %(dem)s)" --overwrite\n\n' %{'dem':self.params.process.parameters.grassDEM}
             
             cmd += '# Set color ramp to elevation\n'
 
-            cmd += 'r.colors map=inputDEMonlyp color=elevation\n\n' %{'dem':self.params.grassDEM}
+            cmd += 'r.colors map=inputDEMonlyp color=elevation\n\n' %{'dem':self.params.process.parameters.grassDEM}
         
             cmd += '# Export as geotiff \n'
             
             cmd += 'r.out.gdal format=GTiff  input=inputDEMonlyp \
-            output=%(fpn)s\n\n' %{'fpn':self.params.inputDEMFPN_s0}
+            output=%(fpn)s\n\n' %{'fpn':self.params.FPNs.inputDEMFPN_s0}
             
             GRASSshF.write(cmd)
+            
+            
+        cmd = '# Set terminal drainage to null()\n'
         
-        GRASSshF.write('# Create a map of the terminal drainage\n')
-        
-        cmd = 'r.mapcalc "drain_terminal = if(isnull(\'%(dem)s\'), 1, null())" --overwrite\n\n' %{'dem':self.params.grassDEM}
+        cmd += 'r.mapcalc "hydroDEM = if((%(dem)s == %(terminalelev)f), null(), %(dem)s)" --overwrite\n\n' %{'dem':self.params.process.parameters.grassDEM,
+                                                                                                    'terminalelev':self.params.process.parameters.terminalelev}
 
-        GRASSshF.write(cmd)
         
-        GRASSshF.write('# Clump agglomerated cells of the terminal drainage\n')
+        cmd += '# Create a map of the terminal drainage\n'
         
-        cmd = 'r.clump input=drain_terminal output=terminal_clumps --overwrite\n\n'
-        
-        GRASSshF.write(cmd)
-        
-        GRASSshF.write('# Vectorize the clumps\n')
-        
-        cmd = 'r.to.vect input=terminal_clumps output=terminal_clumps type=area --overwrite\n\n'
+        cmd += 'r.mapcalc "drain_terminal = if(isnull(hydroDEM), 1, null())" --overwrite\n\n'
 
-        GRASSshF.write(cmd)
+        #GRASSshF.write(cmd)
         
-        GRASSshF.write('# Add the area of each clump to the clump polygons attribute table\n')
+        cmd += '# Clump agglomerated cells of the terminal drainage\n'
         
-        cmd = 'v.to.db map=terminal_clumps type=centroid option=area columns=area_km2 units=kilometers\n\n'
+        cmd += 'r.clump input=drain_terminal output=terminal_clumps --overwrite\n\n'
         
-        GRASSshF.write(cmd)
+        #GRASSshF.write(cmd)
         
-        GRASSshF.write('# Export all clumps as ESRI shape files by removing the "#"\n')
+        cmd += '# Vectorize the clumps\n'
         
-        cmd = '# v.out.ogr input=terminal_clumps type=area format=ESRI_Shapefile \
-        output=%(fpn)s --overwrite\n\n' %{'fpn':self.params.terminalClumpsFPN_s0}
+        cmd += 'r.to.vect input=terminal_clumps output=terminal_clumps type=area --overwrite\n\n'
+
+        #GRASSshF.write(cmd)
         
-        GRASSshF.write(cmd)
+        cmd += '# Add the area of each clump to the clump polygons attribute table\n'
         
-        GRASSshF.write('# Rasterize all clumps below a threshhold size.\n')
-        GRASSshF.write('# These raster cells will be changed to land areas with initial elevation = 0\n')
+        cmd += 'v.to.db map=terminal_clumps type=centroid option=area columns=area_km2 units=kilometers\n\n'
         
-        cmd = 'v.to.rast input=terminal_clumps type=area where="area_km2< %(th)f" \
-        output=drain_terminal_small use=val value=0 --overwrite\n\n' %{'th':self.params.terminalClumpAreakm2Threshold}
+
+        cmd += '# Export all clumps as ESRI shape files by removing the "#"\n'
         
-        GRASSshF.write(cmd)
+        cmd += '# v.out.ogr input=terminal_clumps type=area format=ESRI_Shapefile \
+        output=%(fpn)s --overwrite\n\n' %{'fpn':self.params.FPNs.terminalClumpsFPN_s0}
         
-        GRASSshF.write('# Export all small (land) clumps as ESRI shape files by removing the "#"\n')
         
-        cmd = '# v.out.ogr input=drain_terminal_small type=area format=ESRI_Shapefile \
-        output=%(fpn)s --overwrite\n\n' %{'fpn':self.params.terminalClumpsSmallFPN_s0}
+        cmd += '# Rasterize all clumps below a threshhold size.\n'
         
-        GRASSshF.write(cmd)
+        cmd += '# These raster cells will be changed to land areas with initial elevation = 0\n'
         
-        GRASSshF.write('# Rasterize all clumps above a threshhold size.\n')
+        cmd += 'v.to.rast input=terminal_clumps type=area where="area_km2< %(th)f" \
+        output=drain_terminal_small use=val value=0 --overwrite\n\n' %{'th':self.params.process.parameters.terminalClumpAreakm2Threshold}
         
-        cmd = 'v.to.rast input=terminal_clumps type=area where="area_km2 >= %(th)f" \
-        output=drain_terminal_large use=val value=0 --overwrite\n\n' %{'th':self.params.terminalClumpAreakm2Threshold}
+
+        cmd += '# Rasterize all clumps above a threshhold size.\n'
         
-        GRASSshF.write(cmd)
-        
-        GRASSshF.write('# Export all large (terminal drainage) clumps as ESRI shape files by removing the "#"\n')
-        
-        cmd = '# v.out.ogr input=drain_terminal_large type=area format=ESRI_Shapefile \
-        output=%(fpn)s --overwrite\n\n' %{'fpn':self.params.terminalClumpsLargeFPN_s0}
-        
-        GRASSshF.write(cmd)
+        cmd += 'v.to.rast input=terminal_clumps type=area where="area_km2 >= %(th)f" \
+        output=drain_terminal_large use=val value=0 --overwrite\n\n' %{'th':self.params.process.parameters.terminalClumpAreakm2Threshold}
         
         GRASSshF.write('# Mapcalc a new composit filled DEM over all terrestrial regions\n')
 
-        cmd = 'r.mapcalc "inland_comp_DEM = if(( isnull(%(dem)s)), drain_terminal_small,%(dem)s )" \
-        --overwrite\n\n' %{'dem':self.params.grassDEM}
+        cmd += 'r.mapcalc "inland_comp_DEM = if(( isnull(hydroDEM)), drain_terminal_small,hydroDEM )" \
+        --overwrite\n\n'
         
-        GRASSshF.write(cmd)
+        cmd += '# Export the terrestrial composite DEM as a geotiff\n'
         
-        GRASSshF.write('# Export the terrestrial composite DEM as a geotiff\n')
-        
-        cmd = 'r.out.gdal format=GTiff  input=inland_comp_DEM \
-        output=%(fpn)s --overwrite\n\n' %{'fpn':self.params.inlandCompDEMFPN_s0}
+        cmd += 'r.out.gdal format=GTiff  input=inland_comp_DEM \
+            output=%(fpn)s --overwrite\n\n' %{'fpn':self.params.FPNs.inlandCompDEMFPN_s0}
         
         GRASSshF.write(cmd)
         

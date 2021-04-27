@@ -11,7 +11,14 @@ import os
 import sys
 #from osgeo import ogr, osr
 
-from params.be_params_v03 import Params
+#from params.be_params_v03 import Params
+
+from params.paramsjson import JsonParams
+
+from params.bex_params import BEXparams
+
+
+
 from ds_manage.datasource import DS
 
 # stage 0 is the dem preparation, filling of nodata and pitfilling if required
@@ -105,39 +112,39 @@ class BasinExtract(DS):
         self.params = params 
         
         # Set the script path
-        self.scriptfp = os.path.join(self.params.fp)
+        self.scriptfp = os.path.join(self.params.FPNs.fp)
         
         if not os.path.exists(self.scriptfp):
             
             os.makedirs(self.scriptfp)
             
         # Set the path to the new basins and data to same as the source path
-        self.basinfp = self.datafp = self.params.fp
+        self.basinfp = self.datafp = self.params.FPNs.fp
         
         # Go to the stage for this run
-        if self.params.stage == 0:
+        if self.params.process.parameters.stage == 0:
             s0.ProcStage0(self.params)
             
-        if self.params.stage == 1:
+        if self.params.process.parameters.stage == 1:
             s1.ProcStage1StreamTopology(self.params)
             
-        if self.params.stage == 2:
+        if self.params.process.parameters.stage == 2:
             s2.ProcStage2BasinOutlets(self.params)
         
-        if self.params.stage == 4:
+        if self.params.process.parameters.stage == 4:
             
             # The target file was deleted if <overwrite> set to True
-            if not os.path.exists(self.params.BasinOutletFpn_s4):
+            if not os.path.exists(self.params.FPNs.BasinOutletFpn_s4):
                 
                 self.ProcStage4()
                 
             else:
 
-                self.ProcStage4()
+                STOP
 
 
                                 
-        if self.params.stage == 6:
+        if self.params.process.parameters.stage == 6:
             
             self.ProcStage6()
                          
@@ -172,6 +179,66 @@ class BasinExtract(DS):
         # Start stage 4
         s6.CleanBasinPolys(self.params)  
             
+def StartUp(jsonFPN):
+    '''
+    '''
+    ProcPar = JsonParams()
+    
+    processD = ProcPar._JsonObj(jsonFPN)
+    
+    # Inititate the extra parameters required for basin delineate
+    
+    ProcBEX = BEXparams()
+    
+    for k in range(len(processD)):
+        
+        print ('    ',k, processD[k])
+    
+        params = processD[k]['PP']
+        
+        # The processing has only one locus and one period
+        
+        params.locus = params.srcLocations.locusL[0]
+        
+        params.datum = params.srcPeriod.datumL[0]
+        
+        params.alias = ProcPar.jsonParams['userproject']['alias']
+
+        # Get geotrans and translate cellsizes to metric units
+        
+        ProcBEX._SetGeoTransform(params)
+        
+        ProcBEX._DestinationDS(params)
+
+        print ('params',params)
+        
+        #params = Params._JsonObj(jsonFPN)
+
+        if params.process.filecheck:
+            
+            # list the source and destination files
+  
+            params.process.verbose = 2
+
+            if params.process.verbose:
+                infostr = '    Parameters from xml file: %s' %(xmlFPN)
+                print (infostr)
+                print ('        system:',params.system)
+                print ('        region:',params.region)
+                
+                print ('        alias:',params.alias)
+                print ('        delete flag:', params.delete)
+                print ('        overwrite flag:',params.overwrite)
+                print ('        paramsD:',params)
+                print ('        dstpath:',params.dstpath)
+
+                print ('        compD:',params.compD)
+            ListSrcDstDS(params)
+        
+        else:
+            # Start main process
+            
+            BasinExtract(params)
     
                      
 if __name__ == "__main__":
@@ -209,16 +276,13 @@ if __name__ == "__main__":
     
     xmlFPN = '/Volumes/GRASS2020/GRASSproject/COP-DEM/region/basin/nordhydroCOPDEM/xml/grass_drainage_outlets_stage4.xml'
     
-    params = Params(xmlFPN)
+    jsonFPN = '/Volumes/GRASS2020/GRASSproject/COP-DEM/region/basin/nordichydro-ease2n/json/nordichydro-ease2n_drainage_outlets_stage0.json'
     
-    if params.filecheck:
-        
-        # list the source and destiation files
-        
-        ListSrcDstDS(params)
+    jsonFPN = '/Volumes/GRASS2020/GRASSproject/COP-DEM/region/basin/nordichydro-ease2n/json/nordichydro-ease2n_drainage_outlets_stage1.json'
+
+    jsonFPN = '/Volumes/GRASS2020/GRASSproject/COP-DEM/region/basin/nordichydro-ease2n/json/nordichydro-ease2n_drainage_outlets_stage2.json'
+
+    jsonFPN = '/Volumes/GRASS2020/GRASSproject/COP-DEM/region/basin/nordichydro-ease2n/json/nordichydro-ease2n_drainage_outlets_stage4.json'
     
-    else:
-        # Start main process
+    StartUp(jsonFPN)
         
-        BasinExtract(params)
-    
