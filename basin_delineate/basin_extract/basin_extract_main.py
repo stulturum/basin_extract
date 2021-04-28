@@ -140,7 +140,7 @@ class BasinExtract(DS):
                 
             else:
 
-                STOP
+                self.ProcStage4()
 
 
                                 

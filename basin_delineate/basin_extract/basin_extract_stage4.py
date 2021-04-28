@@ -80,12 +80,12 @@ class CreateGRASSprocess(DS):
             print ('    Total nr of final outlets', len(self.finalOutletsD))
         
         
-        self.WriteStage4DS(self.params.BasinOutletFpn_s4, self.spatialRef, self.finalOutletsD, True)
+        self.WriteStage4DS(self.params.FPNs.BasinOutletFpn_s4, self.spatialRef, self.finalOutletsD, True)
    
         if self.removedOutlets:
-            self.WriteStage4DS(self.params.RedundantOutletFpn_s4, self.spatialRef, self.removedOutlets)
+            self.WriteStage4DS(self.params.FPNs.RedundantOutletFpn_s4, self.spatialRef, self.removedOutlets)
             
-        if self.params.outlet.upper() == 'MOUTH':
+        if self.params.process.parameters.outlet.upper() == 'MOUTH':
             self.GRASSDEM()
             
         self.WriteGrassCmdStage4()
@@ -94,7 +94,7 @@ class CreateGRASSprocess(DS):
         
         print (cmd)
         
-        if self.params.outlet.upper() == 'MOUTH':
+        if self.params.process.parameters.outlet.upper() == 'MOUTH':
             
             cmd = '# Script for creating virtual DEM for directing hydrological flow in river basin mouths.\n'
             cmd += '# Change the script to be executable by the command:\n'
@@ -137,7 +137,7 @@ class CreateGRASSprocess(DS):
         
         # Open the shore wall points
         
-        swds = self.OpenDs(self.params.process.parameters.shorewallptfpn_s2)
+        swds = self.OpenDs(self.params.FPNs.shorewallptfpn_s2)
         
         swLayer = swds.GetLayer()
         
@@ -255,7 +255,7 @@ class CreateGRASSprocess(DS):
                     # Identiry the widest mouth
                     self.widestMouth = len(mouthD[m])
                     
-                if self.params.clusterOutlet[0].lower() == 'c':
+                if self.params.process.parameters.clusterOutlet[0].lower() == 'c':
                     # Construct a numpy array of coords
                     coordA = np.asarray( [ [p[0],p[1]] for p in mouthD[m] ] )
                     print (coordA)
@@ -287,7 +287,7 @@ class CreateGRASSprocess(DS):
             
             # Only retain candidates that are above the minimum basin area in km2 (minBasinAreaKm2)
 
-            if outletD[o]['upstream'] < self.params.minBasinCells:
+            if outletD[o]['upstream'] < self.params.process.parameters.minBasinCells:
 
                 continue
             
@@ -335,7 +335,7 @@ class CreateGRASSprocess(DS):
             nodes = np.delete(adjA, [i], 0)
                     
             # Retrieve the cells that fall within dt as a Boolean array
-            within = cdist([node], nodes) < self.params.thresholddist 
+            within = cdist([node], nodes) < self.params.process.parameters.thresholddist 
             
             # Mask the nodes (original coordinates) with the Boolean array
             adjacents = nodes[within[0],:]
@@ -607,16 +607,16 @@ class CreateGRASSprocess(DS):
         '''
         
         # Calculate the max distance for the cost grow
-        if self.params.clusterOutlet[0] == 'c':
+        if self.params.process.parameters.clusterOutlet[0] == 'c':
             d = self.widestMouth*0.71
         else:
             d = self.widestMouth
                 
         # Set a baseprefix                 
-        grassbaseprefex = 'basin_%s_%s' %( 'distil', self.params.stage4_method)
+        grassbaseprefex = 'basin_%s_%s' %( 'distil', self.params.process.parameters.stage4_method)
         
         # Set the name and path of the shell script file
-        GRASS1shFN = '%(s)s_grass-virtual-dem_%(typ)s_stage4-step1.sh' %{'s':self.params.region, 'typ':self.params.stage4_method}
+        GRASS1shFN = '%(s)s_grass-virtual-dem_%(typ)s_stage4-step1.sh' %{'s':self.params.locus, 'typ':self.params.process.parameters.stage4_method}
        
         self.GRASS1shFPN = os.path.join(self.params.stage4scriptfp, GRASS1shFN)
         
@@ -633,7 +633,7 @@ class CreateGRASSprocess(DS):
 
         swptv = '%s_%s' %(grassbaseprefex, 'shorewall_pt')
         
-        cmd += 'v.in.ogr -o input=%(in)s output=%(out)s --overwrite\n\n' %{'in':self.params.BasinOutletFpn_s4,'out':swptv}
+        cmd += 'v.in.ogr -o input=%(in)s output=%(out)s --overwrite\n\n' %{'in':self.params.FPNs.BasinOutletFpn_s4,'out':swptv}
 
         swptr = '%s_%s' %(grassbaseprefex, 'shorewall')
                 
@@ -661,7 +661,7 @@ class CreateGRASSprocess(DS):
 
         cmd += '# export cost grow analysis (optional)\n'
                 
-        cmd += '# r.out.gdal -f input=%(in)s format=GTiff type=Int16 output=%(out)s --overwrite\n\n' %{'in':costDEM, 'out':self.params.BasinMouthCostGrowFpn_s4} 
+        cmd += '# r.out.gdal -f input=%(in)s format=GTiff type=Int16 output=%(out)s --overwrite\n\n' %{'in':costDEM, 'out':self.params.FPNs.BasinMouthCostGrowFpn_s4} 
         
         cmd += '# Invert cost grow to create mouth flow route DEM directing flow towards outlet point\n'
 
@@ -671,17 +671,17 @@ class CreateGRASSprocess(DS):
         
         cmd += '# export the mouth flow route DEM (optional)\n'
         
-        cmd += '# r.out.gdal -f input=%(in)s format=GTiff type=Int16 output=%(out)s --overwrite\n\n' %{'in':routedem, 'out':self.params.BasinMouthRouteDEMFpn_s4}
+        cmd += '# r.out.gdal -f input=%(in)s format=GTiff type=Int16 output=%(out)s --overwrite\n\n' %{'in':routedem, 'out':self.params.FPNs.BasinMouthRouteDEMFpn_s4}
         
         cmd += '# combine mouth flow route DEM with original DEM and add the shorewall\n'
   
         hydrodem = '%s_%s' %(grassbaseprefex, 'basin_dem')
         
-        cmd += 'r.mapcalc "%(hydrodem)s = if(isnull(%(routedem)s),(if(isnull(%(dem)s),%(shorewall)s,%(dem)s)),%(routedem)s)" --overwrite\n\n' %{'hydrodem':hydrodem,'shorewall':'shorewall','dem':self.params.grassDEM,'routedem':routedem}
+        cmd += 'r.mapcalc "%(hydrodem)s = if(isnull(%(routedem)s),(if(isnull(%(dem)s),%(shorewall)s,%(dem)s)),%(routedem)s)" --overwrite\n\n' %{'hydrodem':hydrodem,'shorewall':'shorewall','dem':self.params.process.parameters.grassDEM,'routedem':routedem}
         
         cmd += '# export the hydrological corrected DEM (optional)\n'
         
-        cmd += '# r.out.gdal -f input=%(hydrodem)s format=GTiff type=Int16 output=%(out)s --overwrite\n\n' %{'hydrodem':hydrodem, 'out':self.params.BasinHydroDEMFpn_s4}
+        cmd += '# r.out.gdal -f input=%(hydrodem)s format=GTiff type=Int16 output=%(out)s --overwrite\n\n' %{'hydrodem':hydrodem, 'out':self.params.FPNs.BasinHydroDEMFpn_s4}
        
         cmd += '# run r.watershed for the new outlet points and the virtual (hydrologically corrected) DEM\n'
 
@@ -691,17 +691,17 @@ class CreateGRASSprocess(DS):
         
         self.wsheddraindir = '%(wsp)s_draindir' %{'wsp':wsprefix}
          
-        if self.params.watershed == 'SFD':
+        if self.params.process.parameters.watershed == 'SFD':
     
             cmd += 'r.watershed -as convergence=%(cnv)d elevation=%(hydrodem)s accumulation=%(acc)s drainage=%(drain)s_draindir threshold=2000\n\n' %{'hydrodem':hydrodem, 'acc':self.wshedacc, 'drain':self.wsheddraindir}
    
-        elif self.params.watershed == 'MFD':
+        elif self.params.process.parameters.watershed == 'MFD':
 
             cmd += 'r.watershed -a elevation=%(hydrodem)s accumulation=%(acc)s drainage=%(drain)s_draindir threshold=2000\n\n' %{'hydrodem':hydrodem, 'acc':self.wshedacc, 'drain':self.wsheddraindir}
    
         else:
             
-            convergence = int(self.params.watershed[3])
+            convergence = int(self.params.process.parameters.watershed[3])
             
             cmd += 'r.watershed -a convergence=%(cnv)d elevation=%(hydrodem)s accumulation=%(acc)s drainage=%(drain)s threshold=2000 --overwrite\n\n' %{'cnv':convergence, 'hydrodem':hydrodem, 'acc':self.wshedacc, 'drain':self.wsheddraindir}
 
@@ -717,7 +717,7 @@ class CreateGRASSprocess(DS):
         
         cmd += '# export the visualised upstream accumulation raster (optional)\n'   
         
-        cmd += '# r.out.gdal -f input=%(wsal)s format=GTiff type=Byte output=%(out)s --overwrite\n\n' %{'wsal':wsaccln, 'out':self.params.watershedUpdrainFpn_s4}
+        cmd += '# r.out.gdal -f input=%(wsal)s format=GTiff type=Byte output=%(out)s --overwrite\n\n' %{'wsal':wsaccln, 'out':self.params.FPNs.watershedUpdrainFpn_s4}
         
         cmd += '# add column "updrain" to the new outlet vector\n'
         
@@ -739,9 +739,9 @@ class CreateGRASSprocess(DS):
         ''' Write the GRASS commands for basin delineation
         '''
                     
-        GRASS2shFN = '%(s)s_grass-extract-basins_%(typ)s_stage4-step2.sh' %{'s':self.params.region, 'typ':self.params.stage4_method}
+        GRASS2shFN = '%(s)s_grass-extract-basins_%(typ)s_stage4-step2.sh' %{'s':self.params.locus, 'typ':self.params.process.parameters.stage4_method}
         
-        OGRshFN = '%(s)s_ogr2ogr-patch-basins_%(typ)s_stage4-step3A.sh' %{'s':self.params.region, 'typ':self.params.stage4_method}
+        OGRshFN = '%(s)s_ogr2ogr-patch-basins_%(typ)s_stage4-step3A.sh' %{'s':self.params.locus, 'typ':self.params.process.parameters.stage4_method}
 
         # Set the names of the script files
         self.GRASS2shFPN = os.path.join(self.params.stage4scriptfp, GRASS2shFN)
@@ -764,7 +764,7 @@ class CreateGRASSprocess(DS):
         cmd += '# v.clean: Clean the basin vector\n'
         cmd += '# v.db.addcolumn + v.db.update: Add outlet coords to vector db\n'
         
-        if self.params.stage4_method == 'allmouths':  
+        if self.params.process.parameters.stage4_method == 'allmouths':  
                  
             cmd += '# v.db.addcolumn + v.db.update: Add mouth_id and basin_id to vector db\n'
                 
@@ -794,7 +794,7 @@ class CreateGRASSprocess(DS):
             else:
                 oStr= '%s' %(o)
     
-            layername = '%(typ)s_%(d)s' %{'typ': self.params.stage4_method,'d':oStr}
+            layername = '%(typ)s_%(d)s' %{'typ': self.params.process.parameters.stage4_method,'d':oStr}
             
             # Set ESRI shape filename
             shpfn = '%sc.shp' %(layername) 
@@ -828,7 +828,7 @@ class CreateGRASSprocess(DS):
             
             cmd += 'v.db.update map=%(ln)sc column=y_mouth  value=%(y)f\n' %{'ln': layername,'y':ycoord}
             
-            if self.params.stage4_method == 'allmouths':  
+            if self.params.process.parameters.stage4_method == 'allmouths':  
                          
                 cmd += 'v.db.addcolumn map=%(ln)sc columns="mouth_id INT, basin_id INT"\n' %{'ln': layername}
                 
@@ -846,7 +846,7 @@ class CreateGRASSprocess(DS):
                 
                 # the first command line must create the destination vector
                 # use -nlt to get separate POLYGONSs - later merged or turned into multipolygons if forming the same basin
-                cmdStr = 'ogr2ogr -skipfailures -nlt POLYGON %(dstFPN)s %(srcFPN)s\n' %{'dstFPN': self.params.BasinAreasFpn_s4, 'srcFPN':shpfpn}
+                cmdStr = 'ogr2ogr -skipfailures -nlt POLYGON %(dstFPN)s %(srcFPN)s\n' %{'dstFPN': self.params.FPNs.BasinAreasFpn_s4, 'srcFPN':shpfpn}
                 
                 OGRshF.write(cmdStr)
                 
@@ -856,7 +856,7 @@ class CreateGRASSprocess(DS):
                 
                 # all following command line appends to the destination vector
                 
-                cmdStr = 'ogr2ogr  -append -skipfailures -nlt POLYGON %(dstFPN)s %(srcFPN)s\n' %{'dstFPN': self.params.BasinAreasFpn_s4, 'srcFPN':shpfpn}
+                cmdStr = 'ogr2ogr  -append -skipfailures -nlt POLYGON %(dstFPN)s %(srcFPN)s\n' %{'dstFPN': self.params.FPNs.BasinAreasFpn_s4, 'srcFPN':shpfpn}
                 
                 OGRshF.write(cmdStr)
                 
@@ -869,7 +869,7 @@ class CreateGRASSprocess(DS):
         
  
         
-        searchstr = '%s-*.shp' %(self.params.stage4_method)
+        searchstr = '%s-*.shp' %(self.params.process.parameters.stage4_method)
             
         cmd = '# Shell script loop for joining all identified river basins to a single vector file\n'
             
@@ -881,18 +881,18 @@ class CreateGRASSprocess(DS):
     
         cmd += 'files=("${files[@]:1}")\n\n'
             
-        cmd += 'ogr2ogr -skipfailures %(dstFPN)s "$first"\n\n' %{'dstFPN': self.params.BasinAreasFpn_s4}
+        cmd += 'ogr2ogr -skipfailures %(dstFPN)s "$first"\n\n' %{'dstFPN': self.params.FPNs.BasinAreasFpn_s4}
     
         cmd += 'for file in "${files[@]}"; do\n'
             
         cmd += '    echo "$file"\n'
     
-        cmd += '    ogr2ogr -append -skipfailures %(dstFPN)s "$file"\n\n' %{'dstFPN': self.params.BasinAreasFpn_s4}
+        cmd += '    ogr2ogr -append -skipfailures %(dstFPN)s "$file"\n\n' %{'dstFPN': self.params.FPNs.BasinAreasFpn_s4}
     
         cmd += 'done\n'
         
         
-        shFN = '%(s)s_ogr2ogr-patch-basins_%(typ)s_stage4-step3B.sh' %{'s':self.params.region, 'typ':self.params.stage4_method}
+        shFN = '%(s)s_ogr2ogr-patch-basins_%(typ)s_stage4-step3B.sh' %{'s':self.params.locus, 'typ':self.params.process.parameters.stage4_method}
 
 
         self.shFPN = os.path.join(self.params.stage4scriptfp, shFN)

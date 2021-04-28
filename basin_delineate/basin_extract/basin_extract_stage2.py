@@ -38,7 +38,7 @@ class ProcStage2BasinOutlets(DS):
 
         # Set the path to the new basins and data to same as the source path
         self.basinfp = self.datafp = self.params.FPNs.fp
-    
+        
         if self.params.process.verbose:
             inforstr = '        Stage 2: Scripting up GRASS to find basin outlets'
             print (inforstr)

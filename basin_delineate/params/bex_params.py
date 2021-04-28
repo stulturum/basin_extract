@@ -110,9 +110,6 @@ class BEXparams(DS):
             
             self.suffix = params.srcCompD['DEM'].suffix 
             
-            #os.path.join(self.dstpath, 'GRASSproject', self.compD['DEM']['@source'], 'region', self.compD['DEM']['@folder'], self.alias, '0')
-
-            
     def _SetDSNameParts(self,params,dsbandid):
         '''
         '''
@@ -161,9 +158,7 @@ class BEXparams(DS):
                 
                 suffix = self.suffix
                 
-            fp = os.path.join('',params.dstPath.volume, 'GRASSproject', src, 'region', content, params.alias, params.datum)
-            
-            return (fp, prefix, product, suffix )
+            return (self.fp, prefix, product, suffix )
                 
         else:
             
@@ -420,7 +415,7 @@ class BEXparams(DS):
         shorewallpt_s2 = '%(pf)s_%(prod)s_%(reg)s_0_%(sf)s.shp' %{'pf':prefix,'prod':product,
                     'reg':params.locus, 'sf':suffix}
         self.shorewallptfpn_s2 = os.path.join(fp,'stage2',shorewallpt_s2)
-        
+
         # shorefill-DEM 
         fp, prefix, product, suffix = self._SetDSNameParts(params,'shorefill-DEM')
         shorefillDEM_s2 = '%(pf)s_%(prod)s_%(reg)s_0_%(sf)s.tif' %{'pf':prefix,'prod':product,

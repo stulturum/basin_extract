@@ -30,7 +30,7 @@ class DS():
     def OpenDs(self, fpn): 
         ''' Open existing data source
         '''
-        if self.params.verbose:
+        if self.params.process.verbose:
             print ('        opening data source: %s' % (fpn))
         ds = self.driver.Open(fpn, 0) # 0 = read only
             
