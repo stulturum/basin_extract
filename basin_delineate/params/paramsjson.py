@@ -10,6 +10,8 @@ from sys import exit
 
 from os import path
 
+import platform
+
 #from geoimagine.support import ConvertHVstring, ConvertHVinteger, ConvertXYstring, ConvertXYinteger
 
 #from pprint import pprint
@@ -156,11 +158,21 @@ class Composition:
         ''' Set the volume for each composition
         '''
 
+        drivelabelD = {'linux':'/media','macos':'/Volumes'}
+        
         if not hasattr(self, 'volume'):
 
             self.volume = defPath.volume
             
-        if not path.exists(path.join('/Volumes',self.volume)):
+        basos = platform.system()
+        
+        print (basos)
+        
+        print (platform.platform())
+        
+        SMULLE
+            
+        if not path.exists(path.join(drivelabelD[basos.lower()],self.volume)):
             
             exitstr = 'Exiting: the volume %s is not attached' %(self.volume)
             

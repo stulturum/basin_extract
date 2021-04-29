@@ -657,7 +657,8 @@ class CreateGRASSprocess(DS):
 
         costDEM = '%s_%s' %(grassbaseprefex, 'mouth_dist')  
                    
-        cmd += 'r.cost -n input=%(lowdem)s output=%(out)s start_points=%(pt)s max_cost=%(d)d --overwrite\n\n'  %{'lowdem':lowDEMp1, 'out':  costDEM,'pt': swptv, 'd':d}
+        cmd += 'r.cost -n input=%(lowdem)s output=%(out)s start_points=%(pt)s max_cost=%(d)\
+            memory=%(mem)d --overwrite\n\n' %{'lowdem':lowDEMp1, 'out':  costDEM,'pt': swptv, 'd':d, 'mem':self.params.process.parameters.MBmemory}
 
         cmd += '# export cost grow analysis (optional)\n'
                 

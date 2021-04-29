@@ -88,8 +88,7 @@ class BEXparams(DS):
         '''
         '''
         
-        #self.systemfp = os.path.join('Volume', params.dstPath.volume, params.procsys.dstsystem, params.compD['system']['source'], params.procsys.dstdivision, self.compD['system']['folder'], params.locus, params.datum)
-              
+                      
         if 'system' in params.srcLayerD[params.locus][params.datum]:
             
             self.fp = params.srcLayerD[params.locus][params.datum]['system'].FP

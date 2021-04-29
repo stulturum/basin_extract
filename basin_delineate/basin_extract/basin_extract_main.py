@@ -278,11 +278,11 @@ if __name__ == "__main__":
     
     jsonFPN = '/Volumes/GRASS2020/GRASSproject/COP-DEM/region/basin/nordichydro-ease2n/json/nordichydro-ease2n_drainage_outlets_stage0.json'
     
-    jsonFPN = '/Volumes/GRASS2020/GRASSproject/COP-DEM/region/basin/nordichydro-ease2n/json/nordichydro-ease2n_drainage_outlets_stage1.json'
+    #jsonFPN = '/Volumes/GRASS2020/GRASSproject/COP-DEM/region/basin/nordichydro-ease2n/json/nordichydro-ease2n_drainage_outlets_stage1.json'
 
-    jsonFPN = '/Volumes/GRASS2020/GRASSproject/COP-DEM/region/basin/nordichydro-ease2n/json/nordichydro-ease2n_drainage_outlets_stage2.json'
+    #jsonFPN = '/Volumes/GRASS2020/GRASSproject/COP-DEM/region/basin/nordichydro-ease2n/json/nordichydro-ease2n_drainage_outlets_stage2.json'
 
-    jsonFPN = '/Volumes/GRASS2020/GRASSproject/COP-DEM/region/basin/nordichydro-ease2n/json/nordichydro-ease2n_drainage_outlets_stage4.json'
+    #jsonFPN = '/Volumes/GRASS2020/GRASSproject/COP-DEM/region/basin/nordichydro-ease2n/json/nordichydro-ease2n_drainage_outlets_stage4.json'
     
     StartUp(jsonFPN)
         

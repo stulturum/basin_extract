@@ -52,7 +52,7 @@ class ProcStage1StreamTopology(DS):
         
         print (cmd)
                          
-    def _Grassscript(self):    
+    def _Grassscript(self, rusle=False):    
         '''
         '''
         GRASSshFN = '%(s)s_grass_find_basin_outlets_stage1.sh' %{'s':self.params.locus}
@@ -76,9 +76,11 @@ class ProcStage1StreamTopology(DS):
         
         cmd += 'g.region raster=%(dem)s\n\n' %{'dem': 'DEM@PERMANENT'}
         
-        cmd += '# Mapcalc the DEM into  blocking layer only containing 0s.\n'
-    
-        cmd += 'r.mapcalc "blocking = 0" --overwrite\n\n'
+        if rusle:
+        
+            cmd += '# Mapcalc the DEM into  blocking layer only containing 0s.\n'
+        
+            cmd += 'r.mapcalc "blocking = 0" --overwrite\n\n'
         
         '''
         if self.params.process.parameters.grassDEM.lower() == 'hydro_fill_dem':
@@ -95,15 +97,25 @@ class ProcStage1StreamTopology(DS):
         '''  
              
         cmd += '# Multiple flow directions (MFD) watershed analysis\n'
+        
+        if rusle: 
                 
-        cmd += 'r.watershed -a elevation=%(dem)s max_slope_length=%(max_slope_length)s blocking=blocking accumulation=MFD_upstream drainage=MFD_flowdir stream=MFD_stream\
-            tci=MFD_tci spi=MFD_spi basin=MFD_basin half_basin=MFD_half_basin length_slope=MFD_slope_length\
-            slope_steepness=MFD_slope_steepness\
-            threshold=%(th)d  memory=%(mem)d\
-            --overwrite\n\n' %{'dem': self.params.process.parameters.grassDEM,
-                             'max_slope_length':self.params.process.parameters.max_slope_length,
-                             'th': self.params.process.parameters.basinCellThreshold,
-                             'mem':self.params.process.parameters.MBmemory}
+            cmd += 'r.watershed -a elevation=%(dem)s max_slope_length=%(max_slope_length)s blocking=blocking accumulation=MFD_upstream drainage=MFD_flowdir stream=MFD_stream\
+                tci=MFD_tci spi=MFD_spi basin=MFD_basin half_basin=MFD_half_basin length_slope=MFD_slope_length\
+                slope_steepness=MFD_slope_steepness\
+                threshold=%(th)d  memory=%(mem)d\
+                --overwrite\n\n' %{'dem': self.params.process.parameters.grassDEM,
+                                 'max_slope_length':self.params.process.parameters.max_slope_length,
+                                 'th': self.params.process.parameters.basinCellThreshold,
+                                 'mem':self.params.process.parameters.MBmemory}
+                
+        else:
+            
+            cmd += 'r.watershed -a elevation=%(dem)s accumulation=MFD_upstream drainage=MFD_flowdir stream=MFD_stream\
+                threshold=%(th)d  memory=%(mem)d\
+                --overwrite\n\n' %{'dem': self.params.process.parameters.grassDEM,
+                                 'th': self.params.process.parameters.basinCellThreshold,
+                                 'mem':self.params.process.parameters.MBmemory}
 
         cmd += '# MFD with color ramps by removing the "#" sign.\n\n'
                 
@@ -163,24 +175,26 @@ class ProcStage1StreamTopology(DS):
 
         cmd += 'r.out.gdal -f input=hydraulhead format=GTiff output=%(fpn)s --overwrite\n\n' %{'fpn':self.params.FPNs.hydraulhead_s1}
           
-        cmd += '# Export tci and spi parameters\n'        
-
-        cmd += 'r.out.gdal -f input=MFD_tci format=GTiff output=%(fpn)s --overwrite\n\n' %{'fpn':self.params.FPNs.tci_s1}
-
-        cmd += 'r.out.gdal -f input=MFD_spi format=GTiff output=%(fpn)s --overwrite\n\n' %{'fpn':self.params.FPNs.spi_s1}
-        
-        cmd += '# Export basin and half basin\n'        
-
-        cmd += 'r.out.gdal -f input=MFD_basin format=GTiff output=%(fpn)s --overwrite\n\n' %{'fpn':self.params.FPNs.basin_s1}
-
-        cmd += 'r.out.gdal -f input=MFD_half_basin format=GTiff output=%(fpn)s --overwrite\n\n' %{'fpn':self.params.FPNs.half_basin_s1}
-
+        if rusle:
+          
+            cmd += '# Export tci and spi parameters\n'        
+    
+            cmd += 'r.out.gdal -f input=MFD_tci format=GTiff output=%(fpn)s --overwrite\n\n' %{'fpn':self.params.FPNs.tci_s1}
+    
+            cmd += 'r.out.gdal -f input=MFD_spi format=GTiff output=%(fpn)s --overwrite\n\n' %{'fpn':self.params.FPNs.spi_s1}
             
-        cmd += '# Export RUSLE parameters\n'        
-
-        cmd += 'r.out.gdal -f input=MFD_slope_length format=GTiff output=%(fpn)s --overwrite\n\n' %{'fpn':self.params.FPNs.rusle_slope_length_s1}
-
-        cmd += 'r.out.gdal -f input=MFD_slope_steepness format=GTiff output=%(fpn)s --overwrite\n\n' %{'fpn':self.params.FPNs.rusle_slope_steepness_s1}
+            cmd += '# Export basin and half basin\n'        
+    
+            cmd += 'r.out.gdal -f input=MFD_basin format=GTiff output=%(fpn)s --overwrite\n\n' %{'fpn':self.params.FPNs.basin_s1}
+    
+            cmd += 'r.out.gdal -f input=MFD_half_basin format=GTiff output=%(fpn)s --overwrite\n\n' %{'fpn':self.params.FPNs.half_basin_s1}
+    
+                
+            cmd += '# Export RUSLE parameters\n'        
+    
+            cmd += 'r.out.gdal -f input=MFD_slope_length format=GTiff output=%(fpn)s --overwrite\n\n' %{'fpn':self.params.FPNs.rusle_slope_length_s1}
+    
+            cmd += 'r.out.gdal -f input=MFD_slope_steepness format=GTiff output=%(fpn)s --overwrite\n\n' %{'fpn':self.params.FPNs.rusle_slope_steepness_s1}
 
 
         GRASSshF = open(self.GRASSshFPN,'w')

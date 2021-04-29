@@ -88,7 +88,9 @@ class ProcStage2BasinOutlets(DS):
                                 
         cmd += '# Single flow direction (SFD) watershed analysis\n'
         
-        cmd += 'r.watershed -as elevation=%(dem)s accumulation=SFD_upstream drainage=SFD_drainage threshold=%(th)d --overwrite\n\n' %{'dem':self.params.process.parameters.grassDEM , 'th':self.params.process.parameters.basinCellThreshold}
+        cmd += 'r.watershed -as elevation=%(dem)s accumulation=SFD_upstream drainage=SFD_drainage threshold=%(th)d memory=%(mem)d --overwrite\n\n' %{'dem':self.params.process.parameters.grassDEM , 
+                                                                                                            'th':self.params.process.parameters.basinCellThreshold,
+                                                                                                            'mem':self.params.process.parameters.MBmemory}
         
         #cmd += '# Mulitple flow directions (MFD) watershed analysis\n'
         
@@ -182,14 +184,16 @@ class ProcStage2BasinOutlets(DS):
         cmd += '# The default is to set the motuhs to cells with an elevation <= 0.\n'
         cmd += '# Change the value to include more upstream areas or if your terminal drainage is at another elevation.\n\n'
         
-        cmd += 'r.mapcalc "lowlevel_DEM = if((%(dem)s <= %(terminalelev)f), %(terminalelev)f, null())"\n\n' %{'dem': self.params.process.parameters.grassDEM,
-                                                                                                    'terminalelev':self.params.process.parameters.terminalelev}
+        cmd += 'r.mapcalc "lowlevel_DEM = if((%(dem)s <= %(terminalelev)f), %(terminalelev)f, null())"\
+         --overwrite\n\n' %{'dem': self.params.process.parameters.grassDEM,
+            'terminalelev':self.params.process.parameters.terminalelev}
         
         cmd += '# Identify all "lowlevel" cells connected to a basin outlet candidate.\n'
         cmd += '# This cost grow analysis should join mouths belonging to the same basin but separated at the shoreline .\n'
         
-        cmd += 'r.cost -n input=lowlevel_DEM output=lowlevel_outlet_costgrow start_points=basin_outlet_pt max_cost=0 --overwrite\n\n'
-        
+        cmd += 'r.cost -n input=lowlevel_DEM output=lowlevel_outlet_costgrow start_points=basin_outlet_pt max_cost=0\
+            memory=%(mem)d --overwrite\n\n' %{'mem':self.params.process.parameters.MBmemory}
+            
         cmd += '# Clump all "lowlevel" cells associated with a basin outlet candidate (generates a unique id for each basin).\n'
         
         cmd += 'r.clump -d input=lowlevel_outlet_costgrow  output=lowlevel_outlet_clumps --overwrite\n\n'
@@ -205,7 +209,8 @@ class ProcStage2BasinOutlets(DS):
         
         cmd += '# This cost grow analysis joins the cells of separate mouth outlets along the shoreline.\n'
  
-        cmd += 'r.cost -n input=shoreline_DEM output=shoreline_outlet_costgrow start_points=basin_outlet_pt max_cost=0 --overwrite\n\n'
+        cmd += 'r.cost -n input=shoreline_DEM output=shoreline_outlet_costgrow start_points=basin_outlet_pt max_cost=0\
+            memory=%(mem)d --overwrite\n\n' %{'mem':self.params.process.parameters.MBmemory}
         
         cmd += '# Clump all shoreline mouth cells (generates a unique id for each mouth).\n'
         
@@ -316,7 +321,7 @@ class ProcStage2BasinOutlets(DS):
         
         cmd += '# Export by removing the "#" sign.\n'
         
-        cmd += '# r.out.gdal -f format=GTiff type=Byte input=mouthshoreline output=output=%(fpn)s --overwrite\n\n' %{'fpn': self.params.FPNs.mouthshorelinefpn_s2}  
+        cmd += '# r.out.gdal -f format=GTiff type=Byte input=mouthshoreline output=%(fpn)s --overwrite\n\n' %{'fpn': self.params.FPNs.mouthshorelinefpn_s2}  
         
         cmd += '# Combine mouthshoreline and shorewall to get the final shorewall, set shorewall elevation to 9999.\n'
         
