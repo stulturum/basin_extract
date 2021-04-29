@@ -158,23 +158,17 @@ class Composition:
         ''' Set the volume for each composition
         '''
 
-        drivelabelD = {'linux':'/media','macos':'/Volumes'}
+        drivelabelD = {'linux':'/media','macos':'/Volumes','darwin':'/Volumes'}
         
         if not hasattr(self, 'volume'):
 
             self.volume = defPath.volume
             
         basos = platform.system()
-        
-        print (basos)
-        
-        print (platform.platform())
-        
-        SMULLE
-            
+              
         if not path.exists(path.join(drivelabelD[basos.lower()],self.volume)):
             
-            exitstr = 'Exiting: the volume %s is not attached' %(self.volume)
+            exitstr = 'Exiting: the drive %s is not attached' %(self.volume)
             
             exit(exitstr)
 
@@ -1764,8 +1758,13 @@ class JsonParams ():
         # Set the process list
         processD = {}
 
+
+        
+        home = path.expanduser("~")
         # Read the initial (default) parameters
-        defaultjsonFPN = '/Users/thomasgumbricht/Documents/geoimagine_default_thomasg.json'
+        
+        defaultjsonFPN = path.join(home,'Documents','geoimagine_default_thomasg.json')
+        #defaultjsonFPN = '/Users/thomasgumbricht/Documents/geoimagine_default_thomasg.json'
 
         # Get the default periodicity
         queryD = {'subprocid': 'Periodicity', 'element':'period'}

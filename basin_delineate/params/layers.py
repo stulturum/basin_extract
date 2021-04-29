@@ -9,6 +9,8 @@ Last updated 12 Feb 2021
 
 from os import path, makedirs
 
+import platform
+
 # Third party imports
 
 # Package application imports
@@ -107,10 +109,14 @@ class Layer(LayerCommon):
      
     def _SetPath(self):
         """Sets the complete path to region files"""
-        #print ('FUCKING PATH',self.path.volume, self.comp.system, self.comp.source, self.comp.division, self.comp.folder, self.locuspath, self.datum.acqdatestr)
+        #print ('PATH',self.path.volume, self.comp.system, self.comp.source, self.comp.division, self.comp.folder, self.locuspath, self.datum.acqdatestr)
+        drivelabelD = {'linux':'/media','macos':'/Volumes','darwin':'/Volumes'}
+                    
+        basos = platform.system()
+              
 
         self.FN = '%(prefix)s_%(prod)s_%(reg)s_%(d)s_%(suf)s%(e)s' %{'prefix':self.comp.prefix,'prod':self.comp.product,'reg':self.locus.locus, 'd':self.datum.acqdatestr, 'suf':self.comp.suffix,'e':self.comp.ext}            
-        self.FP = path.join('/Volumes',self.path.volume, self.comp.system, self.comp.source, self.comp.division, self.comp.content, self.locus.path, self.datum.acqdatestr)
+        self.FP = path.join(drivelabelD[basos.lower()],self.path.volume, self.comp.system, self.comp.source, self.comp.division, self.comp.content, self.locus.path, self.datum.acqdatestr)
         self.FPN = path.join(self.FP,self.FN)
         if ' ' in self.FPN:
             exitstr = 'EXITING region FPN contains space %s' %(self.FPN)

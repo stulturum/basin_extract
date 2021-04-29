@@ -170,13 +170,13 @@ class BasinExtract(DS):
         if not os.path.exists(self.stage4scriptfp):
             os.makedirs(self.stage4scriptfp)
         
-        if not os.path.exists(self.params.Outletsfpn_s4):
-            exitstr ='EXITING: the output file from stage 1 %s is missing.\n' %(self.params.Outletsfpn_s4)
+        if not os.path.exists(self.params.FPNs.BasinOutletFpn_s4):
+            exitstr ='EXITING: the output file from stage 4 %s is missing.\n' %(self.params.FPNs.BasinOutletFpn_s4)
 
-            print (exitstr)
-            SNULLE
+            exit(exitstr)
+
         
-        # Start stage 4
+        # Start stage 6
         s6.CleanBasinPolys(self.params)  
             
 def StartUp(jsonFPN):
@@ -221,7 +221,7 @@ def StartUp(jsonFPN):
             params.process.verbose = 2
 
             if params.process.verbose:
-                infostr = '    Parameters from xml file: %s' %(xmlFPN)
+                infostr = '    Parameters from json file: %s' %(jsonFPN)
                 print (infostr)
                 print ('        system:',params.system)
                 print ('        region:',params.region)
@@ -233,6 +233,7 @@ def StartUp(jsonFPN):
                 print ('        dstpath:',params.dstpath)
 
                 print ('        compD:',params.compD)
+                
             ListSrcDstDS(params)
         
         else:
@@ -243,46 +244,15 @@ def StartUp(jsonFPN):
                      
 if __name__ == "__main__":
     
-    #xmlFPN = '/Volumes/GRASS2020/GRASSproject/SRTM/region/basin/amazonia_drain_filldem1cell/0/stage0/script/grass_drainage_outlets_stage0.xml'
-    #xmlFPN = '/Volumes/GRASS2020/GRASSproject/SRTM/region/basin/amazonia_test_20201220/xml/grass_drainage_outlets_stage0.xml'
-    #xmlFPN = '/Volumes/GRASS2020/GRASSproject/SRTM/region/basin/amazonia_test_20201220/xml/grass_drainage_outlets_stage1.xml'
-    #xmlFPN = '/Volumes/GRASS2020/GRASSproject/SRTM/region/basin/amazonia_test_20201220/xml/grass_drainage_outlets_stage2.xml'
-    #xmlFPN = '/Volumes/GRASS2020/GRASSproject/SRTM/region/basin/amazonia_test_20201220/xml/grass_drainage_outlets_stage4.xml'
-    
-    #ADD ROUTINE FOR FILLING OF THE NO DATA FROM STAGE 0
-    
-    # Nordichydro
-    #xmlFPN = '/Volumes/GRASS2020/GRASSproject/ESA-DUE/region/basin/nordichydro_v01/xml/grass_drainage_outlets_stage0.xml'
-    #xmlFPN = '/Volumes/GRASS2020/GRASSproject/ESA-DUE/region/basin/nordichydro_v01/xml/grass_drainage_outlets_stage1.xml'
-    #xmlFPN = '/Volumes/GRASS2020/GRASSproject/ESA-DUE/region/basin/nordichydro_v01/xml/grass_drainage_outlets_stage2.xml'
-    #xmlFPN = '/Volumes/GRASS2020/GRASSproject/ESA-DUE/region/basin/nordichydro_v01/xml/grass_drainage_outlets_stage4.xml'
-        
-        
-    # Greenlandhydro
-    
-    #xmlFPN = '/Volumes/GRASS2020/GRASSproject/ESA-DUE/region/basin/greenlandhydro_v01/xml/greenland-hydro_drainage_outlets_stage0.xml'
-    #xmlFPN = '/Volumes/GRASS2020/GRASSproject/ESA-DUE/region/basin/greenlandhydro_v01/xml/greenland-hydro_drainage_outlets_stage1.xml'
-    #xmlFPN = '/Volumes/GRASS2020/GRASSproject/ESA-DUE/region/basin/greenlandhydro_v01/xml/greenland-hydro_drainage_outlets_stage2.xml'
-    #xmlFPN = '/Volumes/GRASS2020/GRASSproject/ESA-DUE/region/basin/greenlandhydro_v01/xml/greenland-hydro_drainage_outlets_stage4.xml'
-
-    # Nordichydro COPDEM
-    
-    xmlFPN = '/Volumes/GRASS2020/GRASSproject/COP-DEM/region/basin/nordhydroCOPDEM/xml/grass_drainage_outlets_stage0.xml'
-    
-    xmlFPN = '/Volumes/GRASS2020/GRASSproject/COP-DEM/region/basin/nordhydroCOPDEM/xml/grass_drainage_outlets_stage1.xml'
-
-    
-    xmlFPN = '/Volumes/GRASS2020/GRASSproject/COP-DEM/region/basin/nordhydroCOPDEM/xml/grass_drainage_outlets_stage2.xml'
-    
-    xmlFPN = '/Volumes/GRASS2020/GRASSproject/COP-DEM/region/basin/nordhydroCOPDEM/xml/grass_drainage_outlets_stage4.xml'
-    
     jsonFPN = '/Volumes/GRASS2020/GRASSproject/COP-DEM/region/basin/nordichydro-ease2n/json/nordichydro-ease2n_drainage_outlets_stage0.json'
     
-    #jsonFPN = '/Volumes/GRASS2020/GRASSproject/COP-DEM/region/basin/nordichydro-ease2n/json/nordichydro-ease2n_drainage_outlets_stage1.json'
+    jsonFPN = '/Volumes/GRASS2020/GRASSproject/COP-DEM/region/basin/nordichydro-ease2n/json/nordichydro-ease2n_drainage_outlets_stage1.json'
 
-    #jsonFPN = '/Volumes/GRASS2020/GRASSproject/COP-DEM/region/basin/nordichydro-ease2n/json/nordichydro-ease2n_drainage_outlets_stage2.json'
+    jsonFPN = '/Volumes/GRASS2020/GRASSproject/COP-DEM/region/basin/nordichydro-ease2n/json/nordichydro-ease2n_drainage_outlets_stage2.json'
 
-    #jsonFPN = '/Volumes/GRASS2020/GRASSproject/COP-DEM/region/basin/nordichydro-ease2n/json/nordichydro-ease2n_drainage_outlets_stage4.json'
+    jsonFPN = '/Volumes/GRASS2020/GRASSproject/COP-DEM/region/basin/nordichydro-ease2n/json/nordichydro-ease2n_drainage_outlets_stage4.json'
     
+    jsonFPN = '/Volumes/GRASS2020/GRASSproject/COP-DEM/region/basin/nordichydro-ease2n/json/nordichydro-ease2n_drainage_outlets_stage6.json'
+
     StartUp(jsonFPN)
         

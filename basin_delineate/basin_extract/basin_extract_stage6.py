@@ -32,25 +32,28 @@ class CleanBasinPolys(DS):
               
         self.attributeD = {}
         
-        if self.params.verbose:
-            inforstr = '        Stage 4: Remove incomplete basins and merge subbasins'
+        if self.params.process.verbose:
+            inforstr = '        Stage 6: Remove incomplete basins and merge subbasins'
             print (inforstr)
              
-        if not path.exists(self.params.BasinAreasFpn_s4):
-            exitstr = 'EXITING: File with preliminary basin polygon file missing, %s' %(self.params.BasinAreasFpn_s4)
+        if not path.exists(self.params.FPNs.BasinAreasFpn_s4):
+            exitstr = 'EXITING: File with preliminary basin polygon file missing, %s' %(self.params.FPNs.BasinAreasFpn_s4)
             exit(exitstr)
              
-        #NOTE THATAT THERE ARE TWO POINT POINt FILES FROM STAGE 1 AND STAGE 
+        #NOTE THAT THERE ARE TWO POINT FILES FROM STAGE 1 AND STAGE 
         
-        if not path.exists(self.params.BasinOutletFpn_s2):
-            exitstr = 'EXITING: File with preliminary basin outlet points missing, %s' %(self.params.BasinOutletFpn_s2)
+        '''
+        if not path.exists(self.params.FPNs.BasinOutletFpn_s4):
+            self.params.FPNs.allOutletsfpn_s2
+            exitstr = 'EXITING: File with preliminary basin outlet points missing, %s' %(self.params.FPNs.BasinOutletFpn_s4)
             exit(exitstr)
-            
-        if self.params.verbose:    
-            inforstr = '        Reading preliminary basin polygons from %s' %(self.params.BasinAreasFpn_s4)
+        '''
+                
+        if self.params.process.verbose:    
+            inforstr = '        Reading preliminary basin polygons from %s' %(self.params.FPNs.BasinAreasFpn_s4)
             print (inforstr)
 
-        ds = self.OpenDs(self.params.BasinAreasFpn_s4)
+        ds = self.OpenDs(self.params.FPNs.BasinAreasFpn_s4)
         
         # Get the source layer
         self.srcLayer = ds.GetLayer()
@@ -58,7 +61,7 @@ class CleanBasinPolys(DS):
         # Get the spatial reference
         spatialRef = self.srcLayer.GetSpatialRef()
 
-        if self.params.verbose:
+        if self.params.process.verbose:
             featureCount = self.srcLayer.GetFeatureCount()
             print ("        Number of preliminary basins: %d" % (featureCount))
             
@@ -70,50 +73,50 @@ class CleanBasinPolys(DS):
         # Loop 1: build a dict of all mouths and basins
         self._BuildMouthBasinDict()
         
-        if self.params.verbose:
+        if self.params.process.verbose:
             
             print ("        Identifying polygons touching DEM perimeter")
         
         # Loop 2: remove all src basins touching the boundary
         self._FindBndTouchSrcFeats()
         
-        if self.params.verbose:
+        if self.params.process.verbose:
             
             print ("        Identifying polygons draining to the same outlet")
             
         # Loop 3: join mouth polygons belonging to the same mouth outlets (Polygones -> Multipolygons)
         self._UnionMouths()
         
-        if self.params.verbose:
+        if self.params.process.verbose:
             
             print ("        Identifying multi-mouth basins draining to more than one outlet")
 
         # Loop 4: join basins with multiple mouths
         self._UnionBasins()
         
-        if self.params.verbose:
+        if self.params.process.verbose:
             
             print ("        Recalculating attributes for altered polygons")
         
         # Loop 5: Recalculate area of united polygons
         self._AreaBasins()
         
-        if self.params.verbose:
+        if self.params.process.verbose:
             
             print ("        Writing results to new data sources")
-            printstr = "            as: %s" % (self.params.basin_areasFPN_s4) 
+            printstr = "            as: %s" % (self.params.FPNs.basin_areasFPN_s6) 
             print (printstr)
             print ("        Omitted polygons (basins) saved")
-            printstr = "            as: %s" % (self.params.basin_omitted_areasFPN_s4) 
+            printstr = "            as: %s" % (self.params.FPNs.basin_omitted_areasFPN_s6) 
             print (printstr)
         
         # Save the basins
-        self.WriteStage4DS(self.params.basin_areasFPN_s4, spatialRef, self.featD, False)
+        self.WriteStage6DS(self.params.FPNs.basin_areasFPN_s6, spatialRef, self.featD, False)
         
         # Save the omitted basins
-        self.WriteStage4DS(self.params.basin_omitted_areasFPN_s4, spatialRef, self.featD, True)
+        self.WriteStage6DS(self.params.FPNs.basin_omitted_areasFPN_s6, spatialRef, self.featD, True)
 
-        if self.params.verbose:
+        if self.params.process.verbose:
             
             print ("        Comparing preliminary outlets with updated basins")
             
@@ -194,7 +197,7 @@ class CleanBasinPolys(DS):
                 # This poly should be skipped when writing the new basin vectors
                 self.featD[x]['skip'] = True
                 
-                if self.params.verbose > 1:
+                if self.params.process.verbose > 1:
                     print ('            Touching boundary: %s %s' %(x, self.featD[x]))
 
         self.srcLayer.ResetReading()  # reset the read position to the start
@@ -268,7 +271,7 @@ class CleanBasinPolys(DS):
         
         boundaryinfected = False
         
-        if self.params.verbose > 1:
+        if self.params.process.verbose > 1:
             print ('            Union (target): %s' %(self.featD[largest]))
         
         for f in featL:
@@ -310,7 +313,7 @@ class CleanBasinPolys(DS):
                     
                     continue
                 
-                if self.params.verbose > 1:
+                if self.params.process.verbose > 1:
                     print ('                adding: %s' %(self.featD[f]))
                 
                 if i == 0: # Only happen in the first loop
@@ -448,43 +451,43 @@ class CleanBasinPolys(DS):
                 self.featD[f]['area_km2'] = self.featD[f]['newgeom'].area/1000000
                
             # All joined basins smaller than the threshold to be skipped
-            if self.featD[f]['area_km2'] < self.params.basinAreaThreshold:
+            if self.featD[f]['area_km2'] < self.params.process.parameters.basinAreaThreshold:
                 
                 self.featD[f]['skip'] = True
                 
     def _FindOutletsWithoutBasins(self):
-        ''' Identify outlets from stage 2 that do not belong to a basin
+        ''' Identify outlets from stage 4 that do not belong to a basin
         '''
         
-        if self.params.verbose:    
-            inforstr = '            Reading preliminary basin outlet points from %s' %(self.params.BasinOutletFpn_s2)
+        if self.params.process.verbose:    
+            inforstr = '            Reading preliminary basin outlet points from stage 4 %s' %(self.params.FPNs.BasinOutletFpn_s4)
             print (inforstr)
             
         # Get the outlet points      
-        dspt = self.OpenDs(self.params.BasinOutletFpn_s2)
+        dspt = self.OpenDs(self.params.FPNs.BasinOutletFpn_s4)
         
         self.outletLayer = dspt.GetLayer()
         
         spatialRef = self.outletLayer.GetSpatialRef()
 
-        if self.params.verbose:
+        if self.params.process.verbose:
             featureCount = self.outletLayer.GetFeatureCount()
             print ("            Number of outlets: %d" % (featureCount))
            
         # Get the basin layer created above
-        dspoly = self.OpenDs(self.params.basin_areasFPN_s4)
+        dspoly = self.OpenDs(self.params.FPNs.basin_areasFPN_s6)
         
         self.basinLayer = dspoly.GetLayer()
         
         if spatialRef == None:
             spatialRef = self.basinLayer.GetSpatialRef()
 
-        if self.params.verbose:
+        if self.params.process.verbose:
             featureCount = self.basinLayer.GetFeatureCount()
             print ("            Number of basins: %d" % (featureCount))
             
         # Get the omitted basin layer created above
-        dsomitted = self.OpenDs(self.params.basin_omitted_areasFPN_s4)
+        dsomitted = self.OpenDs(self.params.FPNs.basin_omitted_areasFPN_s6)
         
         self.omittedLayer = dsomitted.GetLayer()
         
@@ -585,17 +588,17 @@ class CleanBasinPolys(DS):
                         
                         insideL.append(x)
         
-        if self.params.verbose:
+        if self.params.process.verbose:
             
             print ("            Number of duplicates found: %d" % (len(duplFeatD))) 
-            printstr = "            Saved as: %s" % (self.params.basin_duplicate_s2_ptFPN_s4) 
+            printstr = "            Saved as: %s" % (self.params.FPNs.basin_duplicate_s2_ptFPN_s6) 
             print (printstr)
             
             print ("            Number of omitted outlets found: %d" % (len(ptD)))
-            printstr = "            Saved as: %s" % (self.params.basin_remain_s2_ptFPN_s4) 
+            printstr = "            Saved as: %s" % (self.params.FPNs.basin_remain_s2_ptFPN_s6) 
             print (printstr) 
             
                   
-        self.WriteStage2DS(self.params.basin_remain_s2_ptFPN_s4, spatialRef, ptD, True)
+        self.WriteStage4DS(self.params.FPNs.basin_remain_s2_ptFPN_s6, spatialRef, ptD, True)
         
-        self.WriteStage2DS(self.params.basin_duplicate_s2_ptFPN_s4, spatialRef, duplFeatD, True)
+        self.WriteStage4DS(self.params.FPNs.basin_duplicate_s2_ptFPN_s6, spatialRef, duplFeatD, True)
